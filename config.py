@@ -57,7 +57,7 @@ def get_rewrite_system_message(institution, department, person):
 '''
 
 prob_identy_system_message = '''
-**你回复的语气要符合二次元，增添添加表情，回复用汉语**
+**你回复中需要添加适当表情，回复用汉语**
 
 规范完整的Medical Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Way Forward-下一步计划或跟进方案）。
 以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{观点背后的原因和逻辑联系}，进而提出了{后续方案}"。
