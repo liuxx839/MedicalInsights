@@ -1,4 +1,7 @@
 # config.py
+import json
+import pandas as pd
+from collections import defaultdict
 
 topics = {
   "获益/风险": ["治疗效果", "安全性评估", "副作用管理", "成本效益分析"],
