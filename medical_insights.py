@@ -9,7 +9,7 @@ from hunyuan import Hunyuan
 
 st.set_page_config(layout="wide")
 
-from config import get_rewrite_system_message
+from config import get_rewrite_system_message, 
 
 # 在主程序文件的开头
 from config import (
@@ -19,7 +19,8 @@ from config import (
     prob_identy_system_message,
     institutions,
     departments,
-    persons
+    persons,
+    generate_structure_table_message
 )
 
 # 设置页面配置
@@ -139,7 +140,7 @@ def generate_structure_data(text,model_choice="llama3-70b-8192"):
     completion = client.chat.completions.create(
         model=model_choice
         messages=[
-            {"role": "system", "content": structure_data_msg},       
+            {"role": "system", "content": generate_structure_table_message},       
             {"role": "user", "content": text}
         ],
         temperature=0.1,
