@@ -134,6 +134,19 @@ def prob_identy(text,model_choice="llama3-70b-8192"):
     )
     summary = completion.choices[0].message.content
     return summary
+
+def generate_structure_data(text,model_choice="llama3-70b-8192"):
+    completion = client.chat.completions.create(
+        model=model_choice
+        messages=[
+            {"role": "system", "content": structure_data_msg},       
+            {"role": "user", "content": text}
+        ],
+        temperature=0.1,
+        max_tokens=500
+    )
+    summary = completion.choices[0].message.content
+    return summary
   
 # 修改match_color函数
 def match_color(tag):
