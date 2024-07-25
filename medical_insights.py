@@ -279,7 +279,7 @@ if 'rewrite_text' in st.session_state:
         st.session_state.rewrite_text = user_editable_text
 
     # 表格展示
-    st.subheader("Structured Information:")
+    st.subheader("Extracted Information:")
     if 'table_df' in st.session_state:
         st.dataframe(st.session_state.table_df)
 
