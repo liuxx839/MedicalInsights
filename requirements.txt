@@ -3,5 +3,5 @@ zhipuai
 groq
 openai
 tencentcloud-sdk-python
-collections
+pandas
 
