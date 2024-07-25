@@ -138,7 +138,7 @@ def prob_identy(text,model_choice="llama3-70b-8192"):
 
 def generate_structure_data(text,model_choice="llama3-70b-8192"):
     completion = client.chat.completions.create(
-        model=model_choice
+        model=model_choice,
         messages=[
             {"role": "system", "content": generate_structure_table_message},       
             {"role": "user", "content": text}
@@ -240,8 +240,11 @@ if 'tags' in st.session_state:
 if st.button("ReWrite"):
     rewrite_text = rewrite(user_input, institution, department, person,model_choice)
     potential_issues = prob_identy(user_input,model_choice)
+    table_text = generate_structure_data(user_input, model_choice)  # 生成表格数据
     st.session_state.rewrite_text = rewrite_text
     st.session_state.potential_issues = potential_issues
+    st.session_state.table_df = json_to_dataframe(table_text)  # 将表格数据转换为DataFrame
+
 
 def determine_issue_severity(issues_text):
     if "内容需要修改" in issues_text:
@@ -272,6 +275,11 @@ if 'rewrite_text' in st.session_state:
         st.subheader("Editable Rewritten Text:")
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
+
+    # 表格展示
+    st.subheader("Structured Information:")
+    if 'table_df' in st.session_state:
+        st.dataframe(st.session_state.table_df)
 
 # if 'rewrite_text' in st.session_state:
 #     col1, col2 = st.columns(2)
