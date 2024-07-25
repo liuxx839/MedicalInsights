@@ -9,7 +9,7 @@ from hunyuan import Hunyuan
 
 st.set_page_config(layout="wide")
 
-from config import get_rewrite_system_message, 
+from config import get_rewrite_system_message,json_to_dataframe
 
 # 在主程序文件的开头
 from config import (
