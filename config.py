@@ -153,3 +153,98 @@ persons = [
     "护士",
     "研究员"
 ]
+
+generate_structure_table_message = """
+Template:
+{
+"Who": {
+"Name": "",
+"Affiliation": "",
+"Department": ""
+},
+"What": {
+"Topic": "",
+"Key findings": []
+},
+"Why": {
+"Reasons": []
+},
+"Wayforward": {
+"Future directions": []
+},
+"Private_Information": []
+}
+Example:
+{
+"Who": {
+"Name": "李教授",
+"Affiliation": "北京大学第一医院"
+"Department": "心血管科"
+},
+"What": {
+"Topic": "GLP-1 receptor agonist研究",
+"Key findings": [
+"LEAD研究：HbA1c<7%",
+"EXSCEL研究：HbA1c<8%",
+"治疗时间从6个月内扩展到12个月内",
+"LEAD和EXSCEL研究GLP-1 receptor agonist治疗时间为26周",
+"ELIXA研究GLP-1 receptor agonist治疗时间为104周"
+]
+},
+"Why": {
+"Reasons": [
+"扩大GLP-1 receptor agonist应用场景",
+"为2型糖尿病GLP-1 receptor agonist治疗提供更多循证证据"
+]
+},
+"Wayforward": {
+"Future directions": [
+"让更多医生了解并在实战中充分利用该研究",
+"推荐26周的临床使用时间"
+]
+},
+"Private_Information": [
+"李教授",
+"北京大学第一医院"
+]
+}
+Follow above template, direct output json format, no explanation, dont fill in any info if text is too short
+"""
+
+def json_to_dataframe(json_data):
+    def flatten_json(data, prefix=''):
+        items = defaultdict(list)
+        max_length = 0
+        for key, value in data.items():
+            new_key = f"{prefix}/{key}" if prefix else key
+            if isinstance(value, dict):
+                sub_items = flatten_json(value, new_key)
+                for sub_key, sub_value in sub_items.items():
+                    items[sub_key] = sub_value
+                    max_length = max(max_length, len(sub_value))
+            elif isinstance(value, list):
+                items[new_key] = value
+                max_length = max(max_length, len(value))
+            else:
+                items[new_key] = [value]
+                max_length = max(max_length, 1)
+        
+        # 确保所有列的长度一致
+        for key in items:
+            items[key] = items[key] + [''] * (max_length - len(items[key]))
+        
+        return items
+
+    # 将JSON字符串转换为Python字典
+    if isinstance(json_data, str):
+        data = json.loads(json_data)
+    else:
+        data = json_data
+
+    # 展平JSON结构
+    flat_data = flatten_json(data)
+
+    # 创建DataFrame
+    df = pd.DataFrame(flat_data)
+
+    return df
