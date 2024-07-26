@@ -134,7 +134,6 @@ def prob_identy(text,model_choice="llama3-70b-8192"):
         ],
         temperature=0.1,
         max_tokens=500,
-        stream=True,
     )
     summary = completion.choices[0].message.content
     return summary
