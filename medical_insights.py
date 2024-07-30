@@ -54,11 +54,11 @@ def setup_client():
     st.sidebar.markdown("---")
     model_choice = st.sidebar.selectbox(
         "Select Model",
-        ["llama-3.1-70b-versatile","llama3-70b-8192", "glm-4-air","hunyuan-lite","hunyuan-pro"],
+        ["llama-3.1-70b-versatile","llama3-70b-8192","llama-3.1-8b-instant", "glm-4-air","hunyuan-lite","hunyuan-pro"],
         index=0  # 默认选择 llama3-70b-8192
     )
 
-    if model_choice == "llama3-70b-8192" or model_choice == "llama-3.1-70b-versatile":
+    if model_choice == "llama3-70b-8192" or model_choice == "llama-3.1-70b-versatile" or model_choice == "llama-3.1-8b-instant":
         api_key = os.environ.get("GROQ_API_KEY")
         client = Groq(api_key=api_key)
     elif model_choice == "glm-4-air":
