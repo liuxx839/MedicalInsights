@@ -240,6 +240,7 @@ if 'tags' in st.session_state:
 
 # 创建按钮和可编辑文本区域
 if st.button("ReWrite"):
+    print(model_choice)
     rewrite_text = rewrite(user_input, institution, department, person, model_choice)
     potential_issues = prob_identy(user_input, model_choice)
     try:
