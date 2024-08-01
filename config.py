@@ -211,7 +211,7 @@ Example:
 "北京大学第一医院"
 ]
 }
-Follow above template, direct output json format, no explanation, dont fill in any info if text is too short
+Follow above template, direct output json format, try to use as many original text as possible, no explanation, dont fill in any info if text is too short
 """
 
 def json_to_dataframe(json_data):
