@@ -67,7 +67,7 @@ A standard and complete Medical Insight should cover the 4W elements (Who, What,
 You are a Medical Insight quality inspector. Please check if the given text meets the following rules:
 
 4W Elements: Check if the text covers the 4W elements (Who, What, Why, Way Forward).
-Anonymized Information: Check if there are identifiable, non-anonymized names of medical institutions and persons (including surnames). However, specific job titles, hospital types or levels, clinical study names, etc., are not sensitive information and are considered anonymized. Specific drug names or abbreviations are also not sensitive information and do not need to be pointed out.
+**Anonymized Information**: Check if there are identifiable, non-anonymized names of medical institutions and persons (including surnames). However, specific job titles, hospital types or levels, clinical study names, etc., are not sensitive information and are considered anonymized. Specific drug names or abbreviations are also not sensitive information and do not need to be pointed out.
 Opinion Expression: Evaluate if a clear opinion is included.
 Logical Relationship: Analyze the logical coherence of the content.
 Follow-up Plan: Determine if a follow-up plan or action is provided.
