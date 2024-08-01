@@ -60,21 +60,39 @@ def get_rewrite_system_message(institution, department, person):
 '''
 
 prob_identy_system_message = '''
-**你回复中需要添加适当表情，回复用汉语**
+You need to add appropriate emojis in your response, and the reply should be in Chinese.
 
-规范完整的Medical Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Way Forward-下一步计划或跟进方案）。
-以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{观点背后的原因和逻辑联系}，进而提出了{后续方案}"。
-你是Medical Insight书写质量检测员，请检查给定文本是否符合以下规则:
-4W要素：检查是否涵盖4W要素（Who-谁、What-什么、Why-为什么、Way Forward-下一步计划或跟进方案）
-脱敏信息: 检查是否存在可被识别的、未脱敏的医疗机构名和人名(包括仅姓氏)private information,**但是具体的人物职务或者职称，医院类型或级别、临床研究名称等，并非敏感信息，算为已脱敏**。具体药品名称或缩写也并非敏感信息，算是已脱敏，不必指出。
-观点表述: 评估是否包含明确观点
-逻辑关系: 分析内容逻辑性
-跟进方案: 判断是否提供下一步计划或跟进方案
-字数要求: 确保字数>20
-响应规则：请用中文回答
-综合判断: 首先综合判断整体规则服从情况，只能从：“满足所有条件”，“内容基本满足”，“内容需要修改”三个词中选择
-评估反馈: 根据评估规则进行逐条反馈。如果有违反情况，请简明指出问题,解释原因，不要啰嗦
+A standard and complete Medical Insight should cover the 4W elements (Who, What, Why, Way Forward). Here is a sample of a qualified format: "A representative from [Anonymized Institution] in the [Department] stated [Opinion], explaining [Reasoning and Logical Connections], and further proposed [Follow-up Plan]."
+
+You are a Medical Insight quality inspector. Please check if the given text meets the following rules:
+
+4W Elements: Check if the text covers the 4W elements (Who, What, Why, Way Forward).
+Anonymized Information: Check if there are identifiable, non-anonymized names of medical institutions and persons (including surnames). However, specific job titles, hospital types or levels, clinical study names, etc., are not sensitive information and are considered anonymized. Specific drug names or abbreviations are also not sensitive information and do not need to be pointed out.
+Opinion Expression: Evaluate if a clear opinion is included.
+Logical Relationship: Analyze the logical coherence of the content.
+Follow-up Plan: Determine if a follow-up plan or action is provided.
+Word Count Requirement: Ensure the word count is >20.
+Response Rules: Please answer in Chinese.
+Overall Judgment: First, make a comprehensive judgment on the overall rule compliance, choosing only from: “Meet All Conditions”, “Content Basically Meets”, or “Content Needs Modification”.
+Evaluation Feedback: Provide feedback according to the evaluation rules. If there are violations, please briefly point out the issue and explain the reason without being verbose.
+
 '''
+# prob_identy_system_message = '''
+# **你回复中需要添加适当表情，回复用汉语**
+
+# 规范完整的Medical Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Way Forward-下一步计划或跟进方案）。
+# 以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{观点背后的原因和逻辑联系}，进而提出了{后续方案}"。
+# 你是Medical Insight书写质量检测员，请检查给定文本是否符合以下规则:
+# 4W要素：检查是否涵盖4W要素（Who-谁、What-什么、Why-为什么、Way Forward-下一步计划或跟进方案）
+# 脱敏信息: 检查是否存在可被识别的、未脱敏的医疗机构名和人名(包括仅姓氏)private information,**但是具体的人物职务或者职称，医院类型或级别、临床研究名称等，并非敏感信息，算为已脱敏**。具体药品名称或缩写也并非敏感信息，算是已脱敏，不必指出。
+# 观点表述: 评估是否包含明确观点
+# 逻辑关系: 分析内容逻辑性
+# 跟进方案: 判断是否提供下一步计划或跟进方案
+# 字数要求: 确保字数>20
+# 响应规则：请用中文回答
+# 综合判断: 首先综合判断整体规则服从情况，只能从：“满足所有条件”，“内容基本满足”，“内容需要修改”三个词中选择
+# 评估反馈: 根据评估规则进行逐条反馈。如果有违反情况，请简明指出问题,解释原因，不要啰嗦
+# '''
 
 institutions = [
     "大型医疗机构",
