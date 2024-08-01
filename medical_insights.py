@@ -248,7 +248,11 @@ if st.button("ReWrite"):
     # except Exception as e:
     #     st.error(f"生成表格数据时出错: {str(e)}")
     #     st.session_state.table_df = None   
-    # st.session_state.rewrite_text = rewrite_text
+
+    rewrite_text = 'haha'
+    st.session_state.table_df = 'haha'
+    
+    st.session_state.rewrite_text = rewrite_text
     st.session_state.potential_issues = potential_issues
 
 
