@@ -241,13 +241,13 @@ if 'tags' in st.session_state:
 # 创建按钮和可编辑文本区域
 if st.button("ReWrite"):
     rewrite_text = rewrite(user_input, institution, department, person, model_choice)
-    potential_issues = prob_identy(user_input, model_choice)
     try:
         table_text = generate_structure_data(user_input, model_choice)
         st.session_state.table_df = json_to_dataframe(table_text)
     except Exception as e:
         st.error(f"生成表格数据时出错: {str(e)}")
         st.session_state.table_df = None   
+    potential_issues = prob_identy(table_text, model_choice)
 
     st.session_state.rewrite_text = rewrite_text
     st.session_state.potential_issues = potential_issues
