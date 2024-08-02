@@ -60,11 +60,10 @@ def get_rewrite_system_message(institution, department, person):
 '''
 
 prob_identy_system_message = '''
+You are a Medical Insight quality inspector. Please check if the given materials in json meets the below requriments:
+the info  should cover the 4W elements (Who, What, Why, Way Forward), while the private info should be empty for Anonymization purpose.
 You need to add appropriate emojis in your response, and the reply should be in Chinese.
 
-A standard and complete Medical Insight should cover the 4W elements (Who, What, Why, Way Forward). Here is a sample of a qualified format: "A representative from [Anonymized Institution] in the [Department] stated [Opinion], explaining [Reasoning and Logical Connections], and further proposed [Follow-up Plan]."
-
-You are a Medical Insight quality inspector. Please check if the given materials in json meets the above format:
 '''
 
 # prob_identy_system_message = '''
