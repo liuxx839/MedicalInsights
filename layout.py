@@ -143,7 +143,7 @@ def display_rewrite_results():
             
             # 添加 table_df 的显示
             if 'table_df' in st.session_state and st.session_state.table_df is not None:
-                st.subheader("Extracted Information:")
+                st.markdown("<h3 style='font-size: 18px; font-weight: 600;'>Extracted Information:</h3>", unsafe_allow_html=True)
                 st.dataframe(st.session_state.table_df)
             else:
                 st.warning("No extracted information available.")
