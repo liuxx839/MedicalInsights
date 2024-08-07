@@ -14,7 +14,8 @@ from config import (
 )
 
 def setup_client():
-    model_choice = "llama3-70b-8192"  # 默认模型，你可以根据需要修改
+    # model_choice = "llama3-70b-8192"  # 默认模型，你可以根据需要修改
+    model_choice = "llama-3.1-70b-versatile"  # 默认模型，你可以根据需要修改
     # model_choice = "hunyuan-pro" 
     if model_choice in ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"]:
         api_key = os.environ.get("GROQ_API_KEY")
