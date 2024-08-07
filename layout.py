@@ -41,6 +41,13 @@ def setup_sidebar(
         </div>
         """, unsafe_allow_html=True)
 
+        st.markdown("---")
+        model_choice = st.selectbox(
+            "Select Model",
+            ["llama-3.1-70b-versatile","llama3-70b-8192","llama-3.1-8b-instant", "glm-4-air","hunyuan-lite","hunyuan-pro"],
+            index=0  # 默认选择 llama-3.1-70b-versatile
+        )
+
         user_input = st.text_area("Enter Medical Insights: ")
 
         if st.button("Generate Tags"):
@@ -59,7 +66,7 @@ def setup_sidebar(
             for topic in primary_topics:
                 secondary_topics[topic] = st.multiselect(f"Select Secondary Topics for {topic}", topics[topic])
 
-    return user_input, primary_topics, secondary_topics
+    return user_input, primary_topics, secondary_topics, model_choice
 
 def setup_main_page(
     topics, institutions, departments, persons,
