@@ -1,5 +1,6 @@
 #utils.py
 import json
+from config import colors, topics
 
 def match_color(tag, colors, topics):
     tag = tag.strip()
