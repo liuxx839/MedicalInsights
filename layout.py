@@ -149,7 +149,7 @@ def display_rewrite_results():
                 st.warning("No extracted information available.")
 
 
-   st.markdown(
+    st.markdown(
         """
         <style>
         .tag {
