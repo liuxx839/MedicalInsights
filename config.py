@@ -62,6 +62,8 @@ diseases = {
     "罕见疾病": ["囊性纤维化", "亨廷顿舞蹈症", "马凡综合征", "血友病"]
 }
 
+primary_diseases_list = list(diseases.keys())
+
 generate_diseases_system_message = '''
 你的职责是给文本打标签，标签只能在下面的类别里,最多最多选三个最接近的,不需要解释，直接返回结果即可,不需要任何其他文字,如果判断内容不符合任何标签，返回out of label
 {primary_diseases_list}
