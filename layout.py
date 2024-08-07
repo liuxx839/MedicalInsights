@@ -39,18 +39,18 @@ def setup_sidebar(
     with st.sidebar:
         st.markdown("""
         <div style="font-size:14px;">
-        - Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
+        * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
         以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
-        - Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+        * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("## **Enter Medical Insights:**")
+        st.markdown("## **Enter Medical Insights (Step 1):**")
         user_input = st.text_area("", key="user_input", height=200)
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Generate Tags"):
+            if st.button("Generate Tags (Optional)"):
                 tags = generate_tag(user_input, model_choice, client)
                 unique_tags = list(set(tags.split(",")))
                 st.session_state.tags = ",".join(unique_tags)
@@ -60,7 +60,7 @@ def setup_sidebar(
                 st.session_state.disease_tags = ",".join(unique_disease_tags)
 
         with col2:
-            if st.button("ReWrite"):
+            if st.button("ReWrite (Step 3)"):
                 process_rewrite(user_input, st.session_state.get('institution'), 
                                 st.session_state.get('department'), st.session_state.get('person'), 
                                 model_choice, client, rewrite, generate_structure_data, prob_identy)
@@ -71,7 +71,7 @@ def setup_main_page(
     institutions, departments, persons,
     model_choice, client, user_input
 ):
-    st.markdown("##### 请根据拜访，选择如下信息用于rewrite")
+    st.markdown("##### 请根据拜访，选择如下信息用于Rewrite (Step 2)")
     # 创建三列
     col1, col2, col3 = st.columns(3)
 
