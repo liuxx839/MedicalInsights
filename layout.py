@@ -10,8 +10,11 @@ def setup_layout(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
-    # 将标题放在整个页面最上面的中间
-    st.markdown("<h1 style='text-align: center;'>Medical Insights Tagging & Rewrite</h1>", unsafe_allow_html=True)
+    # 将标题放在整个页面最上面的中间，并在后面添加空白行
+    st.markdown("""
+    <h1 style='text-align: center;'>Medical Insights Tagging & Rewrite</h1>
+    <br><br><br>
+    """, unsafe_allow_html=True)
     
     # Sidebar layout
     user_input = setup_sidebar(
