@@ -68,7 +68,7 @@ def setup_main_page(
     institutions, departments, persons,
     model_choice, client, user_input
 ):
-    st.markdown("# 请根据拜访，选择如下信息用于rewrite")
+    st.markdown("##### 请根据拜访，选择如下信息用于rewrite")
     # 创建三列
     col1, col2, col3 = st.columns(3)
 
