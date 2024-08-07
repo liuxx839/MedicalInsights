@@ -9,15 +9,15 @@ def setup_layout(
     primary_topics_list, primary_diseases_list,
     generate_tag, generate_diseases_tag, rewrite,
     prob_identy, generate_structure_data,
-    client
+    model_choice, client
 ):
     st.title("Medical Insights Tagging & Rewrite")
     
     # Sidebar layout
-    user_input, primary_topics, secondary_topics, model_choice = setup_sidebar(
+    user_input, primary_topics, secondary_topics = setup_sidebar(
         topics, primary_topics_list,
         generate_tag, generate_diseases_tag,
-        client
+        model_choice, client
     )
     
     # Main page layout
@@ -41,13 +41,6 @@ def setup_sidebar(
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("---")
-        model_choice = st.selectbox(
-            "Select Model",
-            ["llama-3.1-70b-versatile","llama3-70b-8192","llama-3.1-8b-instant", "glm-4-air","hunyuan-lite","hunyuan-pro"],
-            index=0  # 默认选择 llama-3.1-70b-versatile
-        )
-
         user_input = st.text_area("Enter Medical Insights: ")
 
         if st.button("Generate Tags"):
@@ -66,7 +59,7 @@ def setup_sidebar(
             for topic in primary_topics:
                 secondary_topics[topic] = st.multiselect(f"Select Secondary Topics for {topic}", topics[topic])
 
-    return user_input, primary_topics, secondary_topics, model_choice
+    return user_input, primary_topics, secondary_topics
 
 def setup_main_page(
     topics, institutions, departments, persons,
