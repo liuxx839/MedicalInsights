@@ -80,7 +80,7 @@ def setup_main_page(
         department = st.selectbox("Select Department", departments)
     
     with col3:
-        person = st.selectbox("Select Person", persons)
+        person = st.selectbox("Select Title", persons)
 
     display_tags()
 
