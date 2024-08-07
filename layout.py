@@ -69,9 +69,18 @@ def setup_main_page(
     st.write("### Selected Options")
     display_topics(primary_topics, secondary_topics)
 
-    institution = st.selectbox("Select Institution", institutions)
-    department = st.selectbox("Select Department", departments)
-    person = st.selectbox("Select Person", persons)
+     # 创建三列
+    col1, col2, col3 = st.columns(3)
+
+    # 在每列中放置一个选择框
+    with col1:
+        institution = st.selectbox("Select Institution", institutions)
+    
+    with col2:
+        department = st.selectbox("Select Department", departments)
+    
+    with col3:
+        person = st.selectbox("Select Person", persons)
 
     display_tags()
 
