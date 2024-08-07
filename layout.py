@@ -41,7 +41,7 @@ def setup_sidebar(
         </div>
         """, unsafe_allow_html=True)
 
-        user_input = st.text_area("Enter Medical Insights: ")
+        user_input = st.text_area("### Enter Medical Insights: ")
 
         if st.button("Generate Tags"):
             tags = generate_tag(user_input, model_choice, client)
