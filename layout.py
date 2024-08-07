@@ -159,10 +159,6 @@ def display_rewrite_results():
             padding: 5px;
             margin: 2px;
         }
-        .streamlit-expanderHeader {
-            font-size: 18px;
-            font-weight: 600;
-        }
         </style>
         """,
         unsafe_allow_html=True
