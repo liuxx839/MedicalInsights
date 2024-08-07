@@ -9,15 +9,15 @@ def setup_layout(
     primary_topics_list, primary_diseases_list,
     generate_tag, generate_diseases_tag, rewrite,
     prob_identy, generate_structure_data,
-    model_choice, client
+    client
 ):
     st.title("Medical Insights Tagging & Rewrite")
     
     # Sidebar layout
-    user_input, primary_topics, secondary_topics = setup_sidebar(
+    user_input, primary_topics, secondary_topics, model_choice = setup_sidebar(
         topics, primary_topics_list,
         generate_tag, generate_diseases_tag,
-        model_choice, client
+        client
     )
     
     # Main page layout
