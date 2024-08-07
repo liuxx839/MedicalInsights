@@ -13,14 +13,14 @@ from config import (
 def main():
     st.set_page_config(layout="wide")
     
-    client = setup_client()
+    model_choice, client = setup_client()
     
     setup_layout(
         topics, diseases, institutions, departments, persons,
         primary_topics_list, primary_diseases_list,
         generate_tag, generate_diseases_tag, rewrite,
         prob_identy, generate_structure_data,
-        client
+        model_choice, client
     )
 
 if __name__ == "__main__":
