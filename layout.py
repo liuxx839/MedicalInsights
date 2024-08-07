@@ -10,8 +10,6 @@ def setup_layout(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
-    # 设置页面配置
-    st.set_page_config(layout="wide")
 
     # 顶部标题
     st.markdown("<h1 style='text-align: center; padding: 20px 0;'>Medical Insights Tagging & Rewrite</h1>", unsafe_allow_html=True)
