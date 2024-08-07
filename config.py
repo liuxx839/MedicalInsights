@@ -128,6 +128,7 @@ You need to add appropriate emojis in your response, and the reply should be in 
 # '''
 
 institutions = [
+    "斯坦索姆",
     "大型医疗机构",
     "综合性医院",
     "专科医院",
@@ -145,6 +146,7 @@ institutions = [
 ]
 
 departments = [
+    "嚎哭洞穴",
     "内分泌科",
     "肾移植科",
     "妇产科",
@@ -186,6 +188,7 @@ departments = [
 ]
 
 persons = [
+    "大壮",
     "专家",
     "医生",
     "主任医师",
