@@ -15,7 +15,7 @@ def setup_layout(
     st.title("Medical Insights Tagging & Rewrite")
     
     # 创建两列：一列用于侧边栏，一列用于主内容
-    col1, col2 = st.columns([1, 3])
+    col1, col2 = st.columns(2)
     
     with col1:
         # Sidebar layout
