@@ -7,7 +7,7 @@ from functions import (
 )
 from config import (
     topics, diseases, institutions, departments, persons,
-    primary_topics_list, primary_diseases_list
+    primary_topics_list, primary_diseases_list,colors
 )
 
 def main():
