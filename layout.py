@@ -9,28 +9,24 @@ def setup_layout(
     primary_topics_list, primary_diseases_list,
     generate_tag, generate_diseases_tag, rewrite,
     prob_identy, generate_structure_data,
-    client
+    model_choice, client
 ):
-    # 在这里添加标题
     st.title("Medical Insights Tagging & Rewrite")
     
-    # 创建两列：一列用于侧边栏，一列用于主内容
-    col1, col2 = st.columns(2)
+    # Sidebar layout
+    user_input, primary_topics, secondary_topics = setup_sidebar(
+        topics, primary_topics_list,
+        generate_tag, generate_diseases_tag,
+        model_choice, client
+    )
     
-    with col1:
-        # Sidebar layout
-        user_input, primary_topics, secondary_topics, model_choice = setup_sidebar(
-            topics, primary_topics_list,
-            generate_tag, generate_diseases_tag
-        )
-    
-    with col2:
-        # Main page layout
-        setup_main_page(
-            topics, institutions, departments, persons,
-            rewrite, prob_identy, generate_structure_data,
-            model_choice, client, user_input, primary_topics, secondary_topics
-        )
+    # Main page layout
+    setup_main_page(
+        topics, institutions, departments, persons,
+        rewrite, prob_identy, generate_structure_data,
+        model_choice, client, user_input, primary_topics, secondary_topics
+    )
+
 def setup_sidebar(
     topics, primary_topics_list,
     generate_tag, generate_diseases_tag,
