@@ -2,7 +2,7 @@
 import streamlit as st
 import re
 from utils import match_color, determine_issue_severity, create_json_data
-from config import json_to_dataframe, get_rewrite_system_message, colors
+from config import json_to_dataframe, get_rewrite_system_message, colors,topics
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
