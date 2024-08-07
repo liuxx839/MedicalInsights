@@ -8,7 +8,9 @@ from config import (
     generate_tag_system_message,
     generate_diseases_system_message,
     prob_identy_system_message,
-    generate_structure_table_message
+    generate_structure_table_message,
+    primary_diseases_list,
+    primary_topics_list
 )
 
 def setup_client():
@@ -29,7 +31,7 @@ def generate_tag(text, model_choice, client):
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
-            {"role": "system", "content": generate_tag_system_message},       
+            {"role": "system", "content": generate_tag_system_message.format(primary_topics_list=','.join(primary_topics_list))},       
             {"role": "user", "content": text}
         ],
         temperature=0.1,
@@ -42,7 +44,7 @@ def generate_diseases_tag(text, model_choice, client):
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
-            {"role": "system", "content": generate_diseases_system_message},       
+            {"role": "system", "content":generate_diseases_system_message.format(primary_diseases_list=','.join(primary_diseases_list))},       
             {"role": "user", "content": text}
         ],
         temperature=0.1,
