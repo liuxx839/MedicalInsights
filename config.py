@@ -3,6 +3,28 @@ import json
 import pandas as pd
 from collections import defaultdict
 
+primary_topics_list = list(topics.keys())
+
+# 颜色映射，超过7个颜色的primary_topics_list都赋予粉色
+color_list = [
+    "#FF6347",  # 番茄红
+    "#4682B4",  # 钢蓝色
+    "#32CD32",  # 石灰绿色
+    "#FFD700",  # 金色
+    "#EE82EE",  # 紫罗兰
+    "#8A2BE2",  # 蓝紫色
+    "#FF4500"   # 橙红色
+]
+
+# 默认粉色用于超过7个颜色的主题
+default_color = "#FF69B4"  # 粉色
+
+# 按照顺序为 primary_topics_list 分配颜色
+colors = {}
+for i, topic in enumerate(primary_topics_list):
+    colors[topic] = color_list[i] if i < len(color_list) else default_color
+  
+
 topics = {
   "获益/风险": ["治疗效果", "安全性评估", "副作用管理", "成本效益分析"],
   "竞争产品": ["市场替代品", "竞品分析", "市场份额", "产品比较"],
