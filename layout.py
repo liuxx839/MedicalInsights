@@ -36,16 +36,6 @@ def setup_sidebar(
     model_choice, client
 ):
     with st.sidebar:
-        # 添加自定义CSS样式
-        st.markdown("""
-        <style>
-        .stButton > button {
-            background-color: #7A00E6;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
         # 原有的markdown内容
         st.markdown("""
         <div style="font-size:14px;">
@@ -58,7 +48,7 @@ def setup_sidebar(
         st.markdown("## **Enter Medical Insights (Step 1):**")
         user_input = st.text_area("", key="user_input", height=200)
 
-        st.markdown("## **Enter Medical Insights 请根据拜访，选择如下信息用于Rewrite (Step 2)**")
+        st.markdown("## **请根据拜访，选择如下信息用于Rewrite (Step 2)**")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.institution = st.selectbox("Institution", institutions)
