@@ -35,18 +35,26 @@ def setup_sidebar(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
+    # 添加自定义CSS样式来调整sidebar宽度
+    st.markdown("""
+    <style>
+    /* 调整sidebar宽度 */
+    [data-testid="stSidebar"][aria-expanded="true"] {
+        width: 350px;
+    }
+    [data-testid="stSidebar"][aria-expanded="false"] {
+        width: 350px;
+        margin-left: -350px;
+    }
+    /* 修改按钮样式 */
+    .stButton > button {
+        background-color: #7A00E6;
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     with st.sidebar:
-
-        # 添加自定义CSS样式
-        st.markdown("""
-        <style>
-        .stButton > button {
-            background-color: #7A00E6;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
         # 原有的markdown内容
         st.markdown("""
         <div style="font-size:14px;">
@@ -58,7 +66,6 @@ def setup_sidebar(
 
         st.markdown("## **Step 1: Enter Medical Insights:**")
         user_input = st.text_area("", key="user_input", height=200)
-
         st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite**")
         col1, col2, col3 = st.columns(3)
         with col1:
