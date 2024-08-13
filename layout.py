@@ -19,6 +19,7 @@ def setup_layout(
     # Sidebar layout
     user_input = setup_sidebar(
         topics, primary_topics_list,
+        institutions, departments, persons,  # 添加这些参数
         generate_tag, generate_diseases_tag, rewrite,
         prob_identy, generate_structure_data,
         model_choice, client
@@ -26,10 +27,8 @@ def setup_layout(
     
     # Main page layout
     setup_main_page(
-        institutions, departments, persons,
         model_choice, client, user_input
     )
-
 def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
