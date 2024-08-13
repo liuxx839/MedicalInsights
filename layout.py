@@ -59,9 +59,13 @@ def setup_sidebar(
         user_input = st.text_area("", key="user_input", height=200)
 
         st.markdown("##### 请根据拜访，选择如下信息用于Rewrite (Step 2)")
-        st.session_state.institution = st.selectbox("Select Institution", institutions)
-        st.session_state.department = st.selectbox("Select Department", departments)
-        st.session_state.person = st.selectbox("Select Title", persons)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.session_state.institution = st.selectbox("Institution", institutions)
+        with col2:
+            st.session_state.department = st.selectbox("Department", departments)
+        with col3:
+            st.session_state.person = st.selectbox("Title", persons)
 
         col1, col2 = st.columns(2)
         with col1:
