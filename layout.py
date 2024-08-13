@@ -45,7 +45,6 @@ def setup_sidebar(
         }
         [data-testid="stSidebar"][aria-expanded="false"] > div:first-child {
             width: 400px;
-            margin-left: -400px;
         }
         </style>
         """, unsafe_allow_html=True)
