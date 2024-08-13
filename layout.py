@@ -36,6 +36,20 @@ def setup_sidebar(
     model_choice, client
 ):
     with st.sidebar:
+
+        # 添加自定义 CSS 来控制侧边栏宽度
+        st.markdown("""
+        <style>
+        [data-testid="stSidebar"][aria-expanded="true"] > div:first-child {
+            width: 400px;
+        }
+        [data-testid="stSidebar"][aria-expanded="false"] > div:first-child {
+            width: 400px;
+            margin-left: -400px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         # 添加自定义CSS样式
         st.markdown("""
         <style>
