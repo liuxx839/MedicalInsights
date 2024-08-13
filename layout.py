@@ -55,10 +55,10 @@ def setup_sidebar(
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("## **Enter Medical Insights (Step 1):**")
+        st.markdown("## **Step 1: Enter Medical Insights:**")
         user_input = st.text_area("", key="user_input", height=200)
 
-        st.markdown("##### 请根据拜访，选择如下信息用于Rewrite (Step 2)")
+        st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite**")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.institution = st.selectbox("Institution", institutions)
@@ -79,7 +79,7 @@ def setup_sidebar(
                 st.session_state.disease_tags = ",".join(unique_disease_tags)
 
         with col2:
-            if st.button("Rewrite (Step 3)"):
+            if st.button("Step 3: Rewrite ->"):
                 process_rewrite(user_input, st.session_state.get('institution'), 
                                 st.session_state.get('department'), st.session_state.get('person'), 
                                 model_choice, client, rewrite, generate_structure_data, prob_identy)
