@@ -36,16 +36,17 @@ def setup_sidebar(
     model_choice, client
 ):
     with st.sidebar:
-        # 添加自定义CSS样式，只针对特定的按钮
+        # 添加自定义CSS样式
         st.markdown("""
         <style>
-        .stButton > button[data-baseweb="button"].rewrite-button {
+        .stButton > button {
             background-color: #7A00E6;
             color: white;
         }
         </style>
         """, unsafe_allow_html=True)
 
+        # 原有的markdown内容
         st.markdown("""
         <div style="font-size:14px;">
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
