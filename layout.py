@@ -36,7 +36,7 @@ def setup_sidebar(
     model_choice, client
 ):
     with st.sidebar:
-        # 原有的markdown内容
+        # Original markdown content
         st.markdown("""
         <div style="font-size:14px;">
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
@@ -69,19 +69,23 @@ def setup_sidebar(
                 st.session_state.disease_tags = ",".join(unique_disease_tags)
 
         with col2:
-            st.markdown("""
-            <style>
-            .stButton > button {
-            background-color: #7A00E6;
-            color: white;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            if st.button("Rewrite (Step 3)"):
+            # Add the custom CSS style for the "Rewrite (Step 3)" button
+            st.markdown(
+                """
+                <style>
+                .rewrite-button > button {
+                    background-color: #7A00E6;
+                    color: white;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            if st.button("Rewrite (Step 3)", key="rewrite_button", class_name="rewrite-button"):
                 process_rewrite(user_input, st.session_state.get('institution'), 
                                 st.session_state.get('department'), st.session_state.get('person'), 
                                 model_choice, client, rewrite, generate_structure_data, prob_identy)
-
     return user_input
 
 def setup_main_page(
