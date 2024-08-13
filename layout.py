@@ -40,11 +40,11 @@ def setup_sidebar(
     <style>
     /* 调整sidebar宽度 */
     [data-testid="stSidebar"][aria-expanded="true"] {
-        width: 550px;
+        width: 100%;
     }
     [data-testid="stSidebar"][aria-expanded="false"] {
-        width: 550px;
-        margin-left: -550px;
+        width: 100%;
+        margin-left: -100%;
     }
     /* 修改按钮样式 */
     .stButton > button {
