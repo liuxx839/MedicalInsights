@@ -58,7 +58,7 @@ def setup_sidebar(
         st.markdown("## **Enter Medical Insights (Step 1):**")
         user_input = st.text_area("", key="user_input", height=200)
 
-        st.markdown("##### 请根据拜访，选择如下信息用于Rewrite (Step 2)")
+        st.markdown("## **请根据拜访，选择如下信息用于Rewrite (Step 2)**")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.institution = st.selectbox("Institution", institutions)
