@@ -31,7 +31,7 @@ def setup_layout(
     )
 
 def setup_sidebar(
-    topics, primary_topics_list,
+    topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
     prob_identy, generate_structure_data,
     model_choice, client
@@ -48,6 +48,11 @@ def setup_sidebar(
         st.markdown("## **Enter Medical Insights (Step 1):**")
         user_input = st.text_area("", key="user_input", height=200)
 
+        st.markdown("##### 请根据拜访，选择如下信息用于Rewrite (Step 2)")
+        st.session_state.institution = st.selectbox("Select Institution", institutions)
+        st.session_state.department = st.selectbox("Select Department", departments)
+        st.session_state.person = st.selectbox("Select Title", persons)
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Generate Tags (Optional)"):
@@ -60,7 +65,8 @@ def setup_sidebar(
                 st.session_state.disease_tags = ",".join(unique_disease_tags)
 
         with col2:
-            if st.button("Rewrite (Step 3)"):
+            if st.button("Rewrite (Step 3)", key="rewrite_button", 
+                         style=f"background-color: #7A00E6; color: white;"):
                 process_rewrite(user_input, st.session_state.get('institution'), 
                                 st.session_state.get('department'), st.session_state.get('person'), 
                                 model_choice, client, rewrite, generate_structure_data, prob_identy)
@@ -68,23 +74,8 @@ def setup_sidebar(
     return user_input
 
 def setup_main_page(
-    institutions, departments, persons,
     model_choice, client, user_input
 ):
-    st.markdown("##### 请根据拜访，选择如下信息用于Rewrite (Step 2)")
-    # 创建三列
-    col1, col2, col3 = st.columns(3)
-
-    # 在每列中放置一个选择框
-    with col1:
-        st.session_state.institution = st.selectbox("Select Institution", institutions)
-    
-    with col2:
-        st.session_state.department = st.selectbox("Select Department", departments)
-    
-    with col3:
-        st.session_state.person = st.selectbox("Select Title", persons)
-
     display_tags()
     display_rewrite_results()
 
