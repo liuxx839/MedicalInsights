@@ -142,7 +142,7 @@ def display_rewrite_results():
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
 
-        with st.expander("Assessment Feedback"):
+        with st.expander("Assessment Feedback (click for details)"):
             background_color = determine_issue_severity(st.session_state.potential_issues)
             st.markdown(
                 f"""
