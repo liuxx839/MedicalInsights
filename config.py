@@ -293,10 +293,7 @@ Template:
             "解除关于LDL-C的误区"
         ]
     },
-    "Private_Information": [
-        "三甲医院神经内科主任",
-        "某三甲医院"
-    ]
+    "Private_Information": []
 }
 Follow above template, direct output json format, no explanation, dont fill in any info if text is too short
 """
