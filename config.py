@@ -265,6 +265,39 @@ Example:
 "北京大学第一医院"
 ]
 }
+Template:
+{
+    "Who": {
+        "Name": "三甲医院神经内科主任",
+        "Affiliation": "某三甲医院",
+        "Department": "神经内科"
+    },
+    "What": {
+        "Topic": "LDL-C低限研究",
+        "Key findings": [
+            "LDL-C学术上可以降到婴儿水平",
+            "临床实践中LDL-C要相对平稳",
+            "指南推荐LDL-C控制在1850或1450"
+        ]
+    },
+    "Why": {
+        "Reasons": [
+            "担心LDL-C过低导致的脑出血和神经认知功能障碍",
+            "指南共识上未有推荐"
+        ]
+    },
+    "Wayforward": {
+        "Future directions": [
+            "发表低LDL-C安全性相关文章",
+            "研究脑胆固醇独立合成机制",
+            "解除关于LDL-C的误区"
+        ]
+    },
+    "Private_Information": [
+        "三甲医院神经内科主任",
+        "某三甲医院"
+    ]
+}
 Follow above template, direct output json format, no explanation, dont fill in any info if text is too short
 """
 
