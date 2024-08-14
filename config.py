@@ -268,7 +268,7 @@ Example:
 Template:
 {
     "Who": {
-        "Name": "三甲医院神经内科主任",
+        "Name": "主任",
         "Affiliation": "某三甲医院",
         "Department": "神经内科"
     },
