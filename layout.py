@@ -64,7 +64,7 @@ def setup_sidebar(
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("## **Step 1: Enter Medical Insights:**")
+        st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿:**")
         user_input = st.text_area("", key="user_input", height=200)
         st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite**")
         col1, col2, col3 = st.columns(3)
