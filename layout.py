@@ -66,7 +66,7 @@ def setup_sidebar(
 
         st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
         user_input = st.text_area("", key="user_input", height=200)
-        st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite**")
+        st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.institution = st.selectbox("Institution", institutions)
@@ -87,7 +87,7 @@ def setup_sidebar(
                 st.session_state.disease_tags = ",".join(unique_disease_tags)
 
         with col2:
-            if st.button("Step 3: Rewrite >>"):
+            if st.button("Step 3: Rewrite 🤖️>>"):
                 process_rewrite(user_input, st.session_state.get('institution'), 
                                 st.session_state.get('department'), st.session_state.get('person'), 
                                 model_choice, client, rewrite, generate_structure_data, prob_identy)
