@@ -115,7 +115,7 @@ def setup_sidebar(
                             color: white;
                         }""",
                     ):
-                        if st.button("Rewrite →", use_container_width=True):
+                        if st.button("Rewrite   →", use_container_width=True):
                             process_rewrite(user_input, st.session_state.get('institution'), 
                                             st.session_state.get('department'), st.session_state.get('person'), 
                                             model_choice, client, rewrite, generate_structure_data, prob_identy)
