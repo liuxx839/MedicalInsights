@@ -2,6 +2,7 @@ import streamlit as st
 import re
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
+from streamlit_extras.stylable_container import stylable_container
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
@@ -13,81 +14,100 @@ def setup_layout(
     # 将标题放在整个页面最上面的中间，并在后面添加空白行
     st.markdown("""
     <h1 style='text-align: center;'>Medical Insights Tagging & Rewrite</h1>
-    <br><br><br>
+    <h6 style='text-align: center;'>您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。</h6>
+    <br>
     """, unsafe_allow_html=True)
     
+    colA, colB = st.columns(2)
     # Sidebar layout
-    user_input = setup_sidebar(
-        topics, primary_topics_list,
-        institutions, departments, persons,  # 添加这些参数
-        generate_tag, generate_diseases_tag, rewrite,
-        prob_identy, generate_structure_data,
-        model_choice, client
-    )
+    
+    with colA:
+        user_input = setup_sidebar(
+            topics, primary_topics_list,
+            institutions, departments, persons,  # 添加这些参数
+            generate_tag, generate_diseases_tag, rewrite,
+            prob_identy, generate_structure_data,
+            model_choice, client
+        )
     
     # Main page layout
-    setup_main_page(
-        model_choice, client, user_input
-    )
+    with colB.container():
+        setup_main_page(
+            model_choice, client, user_input
+        )
+
+
 def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
     prob_identy, generate_structure_data,
     model_choice, client
 ):
-    # 添加自定义CSS样式来调整sidebar宽度
+    ## 添加自定义CSS样式来调整sidebar宽度
+    #st.markdown("""
+    #<style>
+    #/* 调整sidebar宽度 */
+    #[data-testid="stSidebar"][aria-expanded="true"] {
+    #    width: 90%;
+    #}
+    #[data-testid="stSidebar"][aria-expanded="false"] {
+    #    width: 90%;
+    #    margin-left: -90%;
+    #}
+    #/* 修改按钮样式 */
+    #.stButton > button {
+    #    background-color: #7A00E6;
+    #    color: white;
+    #}
+    #</style>
+    #""", unsafe_allow_html=True)
+
+
+    # 原有的markdown内容
+    st.markdown("#### Step 1: Enter Medical Insights ")
     st.markdown("""
-    <style>
-    /* 调整sidebar宽度 */
-    [data-testid="stSidebar"][aria-expanded="true"] {
-        width: 90%;
-    }
-    [data-testid="stSidebar"][aria-expanded="false"] {
-        width: 90%;
-        margin-left: -90%;
-    }
-    /* 修改按钮样式 */
-    .stButton > button {
-        background-color: #7A00E6;
-        color: white;
-    }
-    </style>
+    <div style="font-size:14px;">
+    * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
+    以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
+    * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+    </div>
     """, unsafe_allow_html=True)
+    user_input = st.text_area("", placeholder="请输入内容", key="user_input", height=200)
+    with stylable_container("step1",
+        css_styles="""
+        button {
+            background-color: white;
+            color: #7A00E6;
+        }""",
+    ):
+        if st.button("Generate Tags (Optional)"):
+            tags = generate_tag(user_input, model_choice, client)
+            unique_tags = list(set(tags.split(",")))
+            st.session_state.tags = ",".join(unique_tags)
 
-    with st.sidebar:
-        # 原有的markdown内容
-        st.markdown("""
-        <div style="font-size:14px;">
-        * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
-        以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
-        * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
-        </div>
-        """, unsafe_allow_html=True)
+            disease_tags = generate_diseases_tag(user_input, model_choice, client)
+            unique_disease_tags = list(set(disease_tags.split(",")))
+            st.session_state.disease_tags = ",".join(unique_disease_tags)
 
-        st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
-        user_input = st.text_area("", key="user_input", height=200)
-        st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.session_state.institution = st.selectbox("Institution", institutions)
-        with col2:
-            st.session_state.department = st.selectbox("Department", departments)
-        with col3:
-            st.session_state.person = st.selectbox("Title", persons)
+    st.markdown("#### Step 2: 请根据拜访，选择如下信息用于Rewrite")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.session_state.institution = st.selectbox("Institution", institutions)
+    with col2:
+        st.session_state.department = st.selectbox("Department", departments)
+    with col3:
+        st.session_state.person = st.selectbox("Title", persons)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Generate Tags (Optional)"):
-                tags = generate_tag(user_input, model_choice, client)
-                unique_tags = list(set(tags.split(",")))
-                st.session_state.tags = ",".join(unique_tags)
-
-                disease_tags = generate_diseases_tag(user_input, model_choice, client)
-                unique_disease_tags = list(set(disease_tags.split(",")))
-                st.session_state.disease_tags = ",".join(unique_disease_tags)
-
-        with col2:
-            if st.button("Step 3: Rewrite 🤖️>>"):
+    _, col_mid, _ = st.columns(3)
+    with col_mid:
+        with stylable_container("step2",
+            css_styles="""
+            button {
+                background-color: #7A00E6;
+                color: white;
+            }""",
+        ):
+            if st.button("Rewrite →", use_container_width=True):
                 process_rewrite(user_input, st.session_state.get('institution'), 
                                 st.session_state.get('department'), st.session_state.get('person'), 
                                 model_choice, client, rewrite, generate_structure_data, prob_identy)
@@ -100,7 +120,7 @@ def setup_main_page(
     display_tags()
     display_rewrite_results()
 
-    use_generated_text_and_tags = st.checkbox("Use Editable Rewritten Text and AutoTags", value=True)
+
 
     st.download_button(
         label="Download JSON",
@@ -141,6 +161,26 @@ def display_rewrite_results():
         st.subheader("Editable Rewritten Text:")
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
+        
+        col1, col2 = st.columns([0.75,0.25])
+        with col1:
+            use_generated_text_and_tags = st.checkbox("Use Editable Rewritten Text and AutoTags", value=True)
+        with col2:
+            with stylable_container("step3",
+                css_styles="""
+                    button {
+                    background-color: white;
+                    color: #7A00E6;
+                    }""",
+            ):
+                st.
+                
+                (
+                    label="↓ Download JSON",
+                    data=create_json_data(use_generated_text_and_tags, st.session_state, user_editable_text, []),
+                    file_name="medical_insights.json",
+                    mime="application/json"
+                )
 
         with st.expander("Assessment Feedback (click for details)"):
             background_color = determine_issue_severity(st.session_state.potential_issues)
