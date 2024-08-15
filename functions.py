@@ -1,5 +1,6 @@
 #functions.py
 from zhipuai import ZhipuAI
+from openai import OpenAI
 from groq import Groq
 from hunyuan import Hunyuan
 import os
