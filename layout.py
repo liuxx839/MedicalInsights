@@ -57,14 +57,43 @@ def setup_sidebar(
     # """, unsafe_allow_html=True)
 
     with st.sidebar:
-        # 原有的markdown内容
+        ### 原有的markdown内容
+        # st.markdown("""
+        # <div style="font-size:14px;">
+        # * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
+        # 以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
+        # * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+        # </div>
+        # """, unsafe_allow_html=True)
+        
         st.markdown("""
-        <div style="font-size:14px;">
-        * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
-        以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
-        * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
-        </div>
-        """, unsafe_allow_html=True)
+    <style>
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .blinking-text {
+            animation: blink 2s linear infinite;
+        }
+    </style>
+    <div class="blinking-text" style="font-size:14px;">
+    * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
+    以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
+    * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+    </div>
+    <script>
+        // This script is needed to ensure the animation runs in Streamlit
+        window.addEventListener('load', function() {
+            var elements = document.getElementsByClassName('blinking-text');
+            for (var i = 0; i < elements.length; i++) {
+                elements[i].style.animationName = 'none';
+                elements[i].offsetHeight;
+                elements[i].style.animationName = 'blink';
+            }
+        });
+    </script>
+    """, unsafe_allow_html=True)
 
         st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
         user_input = st.text_area("",placeholder="请输入内容", key="user_input", height=200)
