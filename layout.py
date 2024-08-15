@@ -178,7 +178,7 @@ def display_rewrite_results():
                 )
 
         with st.expander("Assessment Feedback (click for details)"):
-            background_color = determine_issue_severity(st.session_state.potential_issues)
+            # background_color = determine_issue_severity(st.session_state.potential_issues)
             st.markdown(
                 f"""
                 <div style="background-color: {background_color}; color: black; padding: 10px; border-radius: 5px; font-family: sans-serif;">
