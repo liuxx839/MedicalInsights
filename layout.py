@@ -111,10 +111,27 @@ def setup_sidebar(
             
             with stylable_container("step2",
                         css_styles="""
-                        button {
-                            background-color: #7A00E6;
-                            color: white;
-                        }""",
+                       @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(122, 0, 230, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(122, 0, 230, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(122, 0, 230, 0);
+            }
+        }
+        button {
+            background-color: #7A00E6;
+            color: white;
+            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(122, 0, 230, 0.7);
+        }""",
                     ):
                         if st.button("Rewrite   →", use_container_width=True):
                             process_rewrite(user_input, st.session_state.get('institution'), 
