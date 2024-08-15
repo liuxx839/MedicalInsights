@@ -4,12 +4,6 @@ from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
 
-# 自定义容器样式函数
-def stylable_container(key, css_styles):
-    container = st.container()
-    container.markdown(css_styles, unsafe_allow_html=True)
-    return container
-    
 def setup_layout(
     topics, diseases, institutions, departments, persons,
     primary_topics_list, primary_diseases_list,
@@ -109,50 +103,24 @@ def setup_sidebar(
                         unique_disease_tags = list(set(disease_tags.split(",")))
                         st.session_state.disease_tags = ",".join(unique_disease_tags)
 
-        # with col2:
-        #     # if st.button("Step 3: Rewrite →"):
-        #     #     process_rewrite(user_input, st.session_state.get('institution'), 
-        #     #                     st.session_state.get('department'), st.session_state.get('person'), 
-        #     #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
+        with col2:
+            # if st.button("Step 3: Rewrite →"):
+            #     process_rewrite(user_input, st.session_state.get('institution'), 
+            #                     st.session_state.get('department'), st.session_state.get('person'), 
+            #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
             
-        #     with stylable_container("step2",
-        #             css_styles="""
-        #             button {
-        #                 background-color: #7A00E6;
-        #                 color: white;
-        #             }""",
-        #             ):
-        #                 if st.button("Rewrite   →", use_container_width=True):
-        #                     process_rewrite(user_input, st.session_state.get('institution'), 
-        #                                     st.session_state.get('department'), st.session_state.get('person'), 
-        #                                     model_choice, client, rewrite, generate_structure_data, prob_identy)
-        with st.container() as col2:
             with stylable_container("step2",
                     css_styles="""
-                    <style>
-                    .blinking-button {
-                        animation: blink 1s step-start infinite;
-                    }
-                    @keyframes blink {
-                        0% { opacity: 1; }
-                        50% { opacity: 0; }
-                        100% { opacity: 1; }
-                    }
-        
-                    /* 保持原来的背景色和字体颜色 */
                     button {
                         background-color: #7A00E6;
                         color: white;
-                    }
-                    </style>
-                    """,
+                    }""",
                     ):
-                        if st.button("Rewrite   →", use_container_width=True, 
-                                     class_='blinking-button'):
+                        if st.button("Rewrite   →", use_container_width=True):
                             process_rewrite(user_input, st.session_state.get('institution'), 
                                             st.session_state.get('department'), st.session_state.get('person'), 
                                             model_choice, client, rewrite, generate_structure_data, prob_identy)
-
+        
     return user_input
 
 def setup_main_page(
