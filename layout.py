@@ -109,20 +109,46 @@ def setup_sidebar(
                         unique_disease_tags = list(set(disease_tags.split(",")))
                         st.session_state.disease_tags = ",".join(unique_disease_tags)
 
-        with col2:
-            # if st.button("Step 3: Rewrite →"):
-            #     process_rewrite(user_input, st.session_state.get('institution'), 
-            #                     st.session_state.get('department'), st.session_state.get('person'), 
-            #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
+        # with col2:
+        #     # if st.button("Step 3: Rewrite →"):
+        #     #     process_rewrite(user_input, st.session_state.get('institution'), 
+        #     #                     st.session_state.get('department'), st.session_state.get('person'), 
+        #     #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
             
+        #     with stylable_container("step2",
+        #             css_styles="""
+        #             button {
+        #                 background-color: #7A00E6;
+        #                 color: white;
+        #             }""",
+        #             ):
+        #                 if st.button("Rewrite   →", use_container_width=True):
+        #                     process_rewrite(user_input, st.session_state.get('institution'), 
+        #                                     st.session_state.get('department'), st.session_state.get('person'), 
+        #                                     model_choice, client, rewrite, generate_structure_data, prob_identy)
+        with st.container() as col2:
             with stylable_container("step2",
                     css_styles="""
+                    <style>
+                    .blinking-button {
+                        animation: blink 1s step-start infinite;
+                    }
+                    @keyframes blink {
+                        0% { opacity: 1; }
+                        50% { opacity: 0; }
+                        100% { opacity: 1; }
+                    }
+        
+                    /* 保持原来的背景色和字体颜色 */
                     button {
                         background-color: #7A00E6;
                         color: white;
-                    }""",
+                    }
+                    </style>
+                    """,
                     ):
-                        if st.button("Rewrite   →", use_container_width=True):
+                        if st.button("Rewrite   →", use_container_width=True, 
+                                     class_='blinking-button'):
                             process_rewrite(user_input, st.session_state.get('institution'), 
                                             st.session_state.get('department'), st.session_state.get('person'), 
                                             model_choice, client, rewrite, generate_structure_data, prob_identy)
