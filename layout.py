@@ -13,7 +13,7 @@ def setup_layout(
 ):
     # 将标题放在整个页面最上面的中间，并在后面添加空白行
     st.markdown("""
-    <h1 style='text-align: center;'>Medical Insights Tagging & Rewrite</h1>
+    <h1 style='text-align: center;'>Medical Insights Copilot</h1>
     <h6 style='text-align: center;'>您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。</h6>
     <br>
     """, unsafe_allow_html=True)
@@ -64,7 +64,7 @@ def setup_sidebar(
 
 
     # 原有的markdown内容
-    st.markdown("#### Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️ ")
+    st.markdown("#### Step 1: 请根据下面的4W要求填写您的Insight初稿 ✏️ ")
     st.markdown("""
     <div style="font-size:14px;">
     * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
@@ -72,7 +72,7 @@ def setup_sidebar(
     * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
     </div>
     """, unsafe_allow_html=True)
-    user_input = st.text_area("", placeholder="请输入内容", key="user_input", height=200)
+    user_input = st.text_area("", placeholder="请输入medical内容", key="user_input", height=200)
     with stylable_container("step1",
         css_styles="""
         button {
@@ -89,7 +89,7 @@ def setup_sidebar(
             unique_disease_tags = list(set(disease_tags.split(",")))
             st.session_state.disease_tags = ",".join(unique_disease_tags)
 
-    st.markdown("#### Step 2: 请根据拜访，选择如下信息用于Rewrite")
+    st.markdown("#### Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️ ")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.session_state.institution = st.selectbox("Institution", institutions)
