@@ -102,15 +102,14 @@ def setup_main_page(
 
     use_generated_text_and_tags = st.checkbox("Use Editable Rewritten Text and AutoTags", value=True)
 
+    # 下载 JSON 文件
     st.download_button(
         label="Download JSON",
-        data = {
-            "Medical_Insights": st.session_state.rewrite_text,
-            "Tags": st.session_state.tags.split(",")
-        }        file_name="medical_insights.json",
+        data=create_json_data(),
+        file_name="medical_insights.json",
         mime="application/json"
     )
-
+    
 def display_tags():
     if 'tags' in st.session_state:
         user_generated_tags = re.split(r'[,\s]+', st.session_state.tags.strip())
