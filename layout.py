@@ -64,7 +64,7 @@ def setup_sidebar(
 
 
     # 原有的markdown内容
-    st.markdown("#### Step 1: Enter Medical Insights ")
+    st.markdown("#### Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️ ")
     st.markdown("""
     <div style="font-size:14px;">
     * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
