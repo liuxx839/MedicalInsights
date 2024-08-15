@@ -36,24 +36,24 @@ def setup_sidebar(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
-    # # 添加自定义CSS样式来调整sidebar宽度
-    # st.markdown("""
-    # <style>
-    # /* 调整sidebar宽度 */
-    # [data-testid="stSidebar"][aria-expanded="true"] {
-    #     width: 90%;
-    # }
-    # [data-testid="stSidebar"][aria-expanded="false"] {
-    #     width: 90%;
-    #     margin-left: -90%;
-    # }
-    # /* 修改按钮样式 */
-    # .stButton > button {
-    #     background-color: #7A00E6;
-    #     color: white;
-    # }
-    # </style>
-    # """, unsafe_allow_html=True)
+    # 添加自定义CSS样式来调整sidebar宽度
+    st.markdown("""
+    <style>
+    /* 调整sidebar宽度 */
+    [data-testid="stSidebar"][aria-expanded="true"] {
+        width: 90%;
+    }
+    [data-testid="stSidebar"][aria-expanded="false"] {
+        width: 90%;
+        margin-left: -90%;
+    }
+    /* 修改按钮样式 */
+    .stButton > button {
+        background-color: #7A00E6;
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     with st.sidebar:
         # 原有的markdown内容
