@@ -2,6 +2,7 @@ import streamlit as st
 import re
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
+from streamlit_extras.stylable_container import stylable_container
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
@@ -36,24 +37,24 @@ def setup_sidebar(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
-    # 添加自定义CSS样式来调整sidebar宽度
-    st.markdown("""
-    <style>
-    /* 调整sidebar宽度 */
-    [data-testid="stSidebar"][aria-expanded="true"] {
-        width: 90%;
-    }
-    [data-testid="stSidebar"][aria-expanded="false"] {
-        width: 90%;
-        margin-left: -90%;
-    }
-    /* 修改按钮样式 */
-    .stButton > button {
-        background-color: #7A00E6;
-        color: white;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # ## 添加自定义CSS样式来调整sidebar宽度
+    # st.markdown("""
+    # <style>
+    # /* 调整sidebar宽度 */
+    # [data-testid="stSidebar"][aria-expanded="true"] {
+    #     width: 90%;
+    # }
+    # [data-testid="stSidebar"][aria-expanded="false"] {
+    #     width: 90%;
+    #     margin-left: -90%;
+    # }
+    # /* 修改按钮样式 */
+    # .stButton > button {
+    #     background-color: #7A00E6;
+    #     color: white;
+    # }
+    # </style>
+    # """, unsafe_allow_html=True)
 
     with st.sidebar:
         # 原有的markdown内容
@@ -78,14 +79,29 @@ def setup_sidebar(
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Generate Tags (Optional)"):
-                tags = generate_tag(user_input, model_choice, client)
-                unique_tags = list(set(tags.split(",")))
-                st.session_state.tags = ",".join(unique_tags)
+            # if st.button("Generate Tags (Optional)"):
+            #     tags = generate_tag(user_input, model_choice, client)
+            #     unique_tags = list(set(tags.split(",")))
+            #     st.session_state.tags = ",".join(unique_tags)
 
-                disease_tags = generate_diseases_tag(user_input, model_choice, client)
-                unique_disease_tags = list(set(disease_tags.split(",")))
-                st.session_state.disease_tags = ",".join(unique_disease_tags)
+            #     disease_tags = generate_diseases_tag(user_input, model_choice, client)
+            #     unique_disease_tags = list(set(disease_tags.split(",")))
+            #     st.session_state.disease_tags = ",".join(unique_disease_tags)
+             with stylable_container("step1",
+                    css_styles="""
+                    button {
+                        background-color: white;
+                        color: #7A00E6;
+                    }""",
+                ):
+                    if st.button("Generate Tags (Optional)"):
+                        tags = generate_tag(user_input, model_choice, client)
+                        unique_tags = list(set(tags.split(",")))
+                        st.session_state.tags = ",".join(unique_tags)
+            
+                        disease_tags = generate_diseases_tag(user_input, model_choice, client)
+                        unique_disease_tags = list(set(disease_tags.split(",")))
+                        st.session_state.disease_tags = ",".join(unique_disease_tags)
 
         with col2:
             if st.button("Step 3: Rewrite →"):
@@ -101,7 +117,7 @@ def setup_main_page(
     display_tags()
     display_rewrite_results()
 
-    #disable download
+    ####disable download
     # use_generated_text_and_tags = st.checkbox("Use Editable Rewritten Text and AutoTags", value=True)
 
     # st.download_button(
