@@ -3,6 +3,12 @@ import re
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
+
+# 自定义容器样式函数
+def stylable_container(key, css_styles):
+    container = st.container()
+    container.markdown(css_styles, unsafe_allow_html=True)
+    return container
     
 def setup_layout(
     topics, diseases, institutions, departments, persons,
