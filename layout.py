@@ -104,8 +104,10 @@ def setup_main_page(
 
     st.download_button(
         label="Download JSON",
-        data=create_json_data(use_generated_text_and_tags, st.session_state, user_input, []),
-        file_name="medical_insights.json",
+        data = {
+            "Medical_Insights": st.session_state.rewrite_text,
+            "Tags": st.session_state.tags.split(",")
+        }        file_name="medical_insights.json",
         mime="application/json"
     )
 
