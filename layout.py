@@ -18,7 +18,7 @@ def setup_layout(
     <br>
     """, unsafe_allow_html=True)
     
-    colA, colB = st.columns([0.25,0.75])
+    colA, colB = st.columns([0.5,0.5])
     # Sidebar layout
     
     with colA:
