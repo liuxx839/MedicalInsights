@@ -3,34 +3,7 @@ import re
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
-
-# 定义 CSS 样式
-css_styles = """
-<style>
-.blinking-button {
-  animation: blink 1s step-start infinite;
-}
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-/* 保持原来的背景色和字体颜色 */
-button {
-  background-color: #7A00E6;
-  color: white;
-}
-</style>
-"""
-
-# 使用自定义容器样式
-def stylable_container(key, css_styles):
-    container = st.container()
-    container.markdown(css_styles, unsafe_allow_html=True)
-    return container
     
-
 def setup_layout(
     topics, diseases, institutions, departments, persons,
     primary_topics_list, primary_diseases_list,
