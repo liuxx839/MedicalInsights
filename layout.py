@@ -13,7 +13,7 @@ def setup_layout(
     # 将标题放在整个页面最上面的中间，并在后面添加空白行
     st.markdown("""
     <h1 style='text-align: center;'>Medical Insights Copilot</h1>
-    <h6 style='text-align: center;'>您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。</h6>
+    <h6 style='text-align: center;'>改写的结果及反馈将呈现在下方，请根据自己的判断进行使用</h6>
     <br><br><br>
     """, unsafe_allow_html=True)
     
