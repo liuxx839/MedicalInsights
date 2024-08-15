@@ -122,13 +122,6 @@ def setup_main_page(
 
 
 
-    st.download_button(
-        label="Download JSON",
-        data=create_json_data(use_generated_text_and_tags, st.session_state, user_input, []),
-        file_name="medical_insights.json",
-        mime="application/json"
-    )
-
 def display_tags():
     if 'tags' in st.session_state:
         user_generated_tags = re.split(r'[,\s]+', st.session_state.tags.strip())
@@ -173,9 +166,7 @@ def display_rewrite_results():
                     color: #7A00E6;
                     }""",
             ):
-                st.
-                
-                (
+                st.download_button(
                     label="↓ Download JSON",
                     data=create_json_data(use_generated_text_and_tags, st.session_state, user_editable_text, []),
                     file_name="medical_insights.json",
