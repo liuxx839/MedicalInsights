@@ -110,7 +110,7 @@ def setup_sidebar(
             #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
             
             with stylable_container("step2",
-                        css_styles="""
+                    css_styles="""
                        @keyframes pulse {
             0% {
                 box-shadow: 0 0 0 0 rgba(122, 0, 230, 0.7);
