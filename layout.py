@@ -111,27 +111,23 @@ def setup_sidebar(
             
             with stylable_container("step2",
                     css_styles="""
-                       @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(122, 0, 230, 0.7);
+                    @keyframes border-pulse {
+                0% { border-color: #7A00E6; }
+                50% { border-color: #FF00FF; }
+                100% { border-color: #7A00E6; }
             }
-            70% {
-                box-shadow: 0 0 0 10px rgba(122, 0, 230, 0);
+            button {
+                background-color: #7A00E6 !important;
+                color: white !important;
+                border: 2px solid #7A00E6;
+                animation: border-pulse 2s infinite;
+                transition: all 0.3s ease;
             }
-            100% {
-                box-shadow: 0 0 0 0 rgba(122, 0, 230, 0);
+            button:hover {
+                transform: scale(1.05);
+                box-shadow: 0 0 10px rgba(122, 0, 230, 0.7);
             }
-        }
-        button {
-            background-color: #7A00E6;
-            color: white;
-            animation: pulse 2s infinite;
-            transition: all 0.3s ease;
-        }
-        button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 10px rgba(122, 0, 230, 0.7);
-        }""",
+                """,
                     ):
                         if st.button("Rewrite   →", use_container_width=True):
                             process_rewrite(user_input, st.session_state.get('institution'), 
