@@ -150,10 +150,14 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.potential_issues = potential_issues
 
 def display_rewrite_results():
-    if 'rewrite_text' in st.session_state:
-        st.subheader("Editable Rewritten Text:")
-        user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
-        st.session_state.rewrite_text = user_editable_text
+    # 如果 'rewrite_text' 不存在，初始化为空字符串
+    if 'rewrite_text' not in st.session_state:
+        st.session_state.rewrite_text = ""
+
+    st.subheader("Editable Rewritten Text:")
+    # 显示 text_area，无论 rewrite_text 是否存在
+    user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
+    st.session_state.rewrite_text = user_editable_text
         
         col1, col2 = st.columns([0.75,0.25])
         with col1:
