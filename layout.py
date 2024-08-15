@@ -150,10 +150,10 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.potential_issues = potential_issues
 
 def display_rewrite_results():
-        if 'rewrite_text' in st.session_state:
-        st.subheader("Editable Rewritten Text:")
-        user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
-        st.session_state.rewrite_text = user_editable_text
+    if 'rewrite_text' in st.session_state:
+    st.subheader("Editable Rewritten Text:")
+    user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
+    st.session_state.rewrite_text = user_editable_text
         
         col1, col2 = st.columns([0.75,0.25])
         with col1:
