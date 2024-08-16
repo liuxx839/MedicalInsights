@@ -77,99 +77,49 @@ def setup_sidebar(
         with col3:
             st.session_state.person = st.selectbox("Title", persons)
 
-        # col1, col2 = st.columns(2)
-        # with col1:
-        #     # if st.button("Generate Tags (Optional)"):
-        #     #     tags = generate_tag(user_input, model_choice, client)
-        #     #     unique_tags = list(set(tags.split(",")))
-        #     #     st.session_state.tags = ",".join(unique_tags)
-
-        #     #     disease_tags = generate_diseases_tag(user_input, model_choice, client)
-        #     #     unique_disease_tags = list(set(disease_tags.split(",")))
-        #     #     st.session_state.disease_tags = ",".join(unique_disease_tags)
-        #      with stylable_container("step1",
-        #             css_styles="""
-        #             button {
-        #                 background-color: white;
-        #                 color: #7A00E6;
-        #             }""",
-        #         ):
-        #             if st.button("Generate Tags (Optional)"):
-        #                 tags = generate_tag(user_input, model_choice, client)
-        #                 unique_tags = list(set(tags.split(",")))
-        #                 st.session_state.tags = ",".join(unique_tags)
-            
-        #                 disease_tags = generate_diseases_tag(user_input, model_choice, client)
-        #                 unique_disease_tags = list(set(disease_tags.split(",")))
-        #                 st.session_state.disease_tags = ",".join(unique_disease_tags)
-
-        # with col2:
-        #     # if st.button("Step 3: Rewrite →"):
-        #     #     process_rewrite(user_input, st.session_state.get('institution'), 
-        #     #                     st.session_state.get('department'), st.session_state.get('person'), 
-        #     #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
-            
-        #     with stylable_container("step2",
-        #             css_styles="""
-        #             button {
-        #                 background-color: #7A00E6;
-        #                 color: white;
-        #             }""",
-        #             ):
-        #                 if st.button("Rewrite   →", use_container_width=True):
-        #                     process_rewrite(user_input, st.session_state.get('institution'), 
-        #                                     st.session_state.get('department'), st.session_state.get('person'), 
-        #                                     model_choice, client, rewrite, generate_structure_data, prob_identy)
-
         col1, col2 = st.columns(2)
         with col1:
-            with stylable_container(
-                "step1",
-                css_styles="""
-                button {
-                    background-color: white;
-                    color: #7A00E6;
-                    border: 1px solid #7A00E6;
-                }
-                button:hover {
-                    background-color: #7A00E6;
-                    color: white;
-                }
-                """
-            ):
-                if st.button("Generate Tags (Optional)"):
-                    tags = generate_tag(user_input, model_choice, client)
-                    unique_tags = list(set(tags.split(",")))
-                    st.session_state.tags = ",".join(unique_tags)
+            # if st.button("Generate Tags (Optional)"):
+            #     tags = generate_tag(user_input, model_choice, client)
+            #     unique_tags = list(set(tags.split(",")))
+            #     st.session_state.tags = ",".join(unique_tags)
+
+            #     disease_tags = generate_diseases_tag(user_input, model_choice, client)
+            #     unique_disease_tags = list(set(disease_tags.split(",")))
+            #     st.session_state.disease_tags = ",".join(unique_disease_tags)
+             with stylable_container("step1",
+                    css_styles="""
+                    button {
+                        background-color: white;
+                        color: #7A00E6;
+                    }""",
+                ):
+                    if st.button("Generate Tags (Optional)"):
+                        tags = generate_tag(user_input, model_choice, client)
+                        unique_tags = list(set(tags.split(",")))
+                        st.session_state.tags = ",".join(unique_tags)
             
-                    disease_tags = generate_diseases_tag(user_input, model_choice, client)
-                    unique_disease_tags = list(set(disease_tags.split(",")))
-                    st.session_state.disease_tags = ",".join(unique_disease_tags)
-    
+                        disease_tags = generate_diseases_tag(user_input, model_choice, client)
+                        unique_disease_tags = list(set(disease_tags.split(",")))
+                        st.session_state.disease_tags = ",".join(unique_disease_tags)
+
         with col2:
-            with stylable_container(
-                "step2",
-                css_styles="""
-                @keyframes blink {
-                    0% { opacity: 1; }
-                    50% { opacity: 0.5; }
-                    100% { opacity: 1; }
-                }
-                button {
-                    background-color: #7A00E6;
-                    color: white;
-                    animation: blink 2s linear infinite;
-                }
-                button:hover {
-                    animation: none;
-                    opacity: 0.8;
-                }
-                """
-            ):
-                if st.button("Rewrite   →", use_container_width=True):
-                    process_rewrite(user_input, st.session_state.get('institution'), 
-                                    st.session_state.get('department'), st.session_state.get('person'), 
-                                    model_choice, client, rewrite, generate_structure_data, prob_identy)
+            # if st.button("Step 3: Rewrite →"):
+            #     process_rewrite(user_input, st.session_state.get('institution'), 
+            #                     st.session_state.get('department'), st.session_state.get('person'), 
+            #                     model_choice, client, rewrite, generate_structure_data, prob_identy)
+            
+            with stylable_container("step2",
+                    css_styles="""
+                    button {
+                        background-color: #7A00E6;
+                        color: white;
+                    }""",
+                    ):
+                        if st.button("Rewrite   →", use_container_width=True):
+                            process_rewrite(user_input, st.session_state.get('institution'), 
+                                            st.session_state.get('department'), st.session_state.get('person'), 
+                                            model_choice, client, rewrite, generate_structure_data, prob_identy)
 
         
     return user_input
