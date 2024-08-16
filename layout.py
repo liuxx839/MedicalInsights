@@ -127,7 +127,7 @@ def setup_sidebar(
                     "step1",
                     css_styles="""
                     button {
-                        background-color: white;
+                        background-color: black;
                         color: #7A00E6;
                         border: 1px solid #7A00E6;
                     }
