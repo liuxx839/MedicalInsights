@@ -167,11 +167,14 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.potential_issues = potential_issues
 
 def display_rewrite_results():
+    st.subheader("Editable Rewritten Text:")
     if 'rewrite_text' in st.session_state:
-        st.subheader("Editable Rewritten Text:")
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
+    else:
+        user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'", height=300)
 
+    if 'rewrite_text' in st.session_state:
         with st.expander("Assessment Feedback (click for details)"):
             background_color = determine_issue_severity(st.session_state.potential_issues)
             st.markdown(
@@ -183,13 +186,11 @@ def display_rewrite_results():
                 unsafe_allow_html=True
             )
             
-            # 添加 table_df 的显示
             if 'table_df' in st.session_state and st.session_state.table_df is not None:
                 st.markdown("<h3 style='font-size: 13px; font-weight: 800;'>Extracted Information:</h3>", unsafe_allow_html=True)
                 st.dataframe(st.session_state.table_df)
             else:
                 st.warning("No extracted information available.")
-
 
     st.markdown(
         """
@@ -205,4 +206,3 @@ def display_rewrite_results():
         """,
         unsafe_allow_html=True
     )
-    
