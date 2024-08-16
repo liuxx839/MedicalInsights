@@ -111,21 +111,15 @@ def setup_sidebar(
             
             with stylable_container("step2",
                     css_styles="""
-                    @keyframes blink {
-                        0% { opacity: 1; }
-                        50% { opacity: 0.5; }
-                        100% { opacity: 1; }
-                    }
                     button {
                         background-color: #7A00E6;
                         color: white;
-                        animation: blink 2s linear infinite;
                     }""",
-                ):
-                    if st.button("Rewrite   →", use_container_width=True):
-                        process_rewrite(user_input, st.session_state.get('institution'), 
-                                        st.session_state.get('department'), st.session_state.get('person'), 
-                                        model_choice, client, rewrite, generate_structure_data, prob_identy)
+                    ):
+                        if st.button("Rewrite   →", use_container_width=True):
+                            process_rewrite(user_input, st.session_state.get('institution'), 
+                                            st.session_state.get('department'), st.session_state.get('person'), 
+                                            model_choice, client, rewrite, generate_structure_data, prob_identy)
         
     return user_input
 
