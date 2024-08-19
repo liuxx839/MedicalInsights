@@ -295,6 +295,39 @@ Template:
     },
     "Private_Information": []
 }
+Template:
+{
+"Who": {
+"Name": "黄主任",
+"Affiliation": "千佛山医院",
+"Department": ""
+},
+"What": {
+"Topic": "贝舒地尔在BOS患者中的应用",
+"Key findings": [
+"贝舒地尔应用期间应注意患者肺功能情况",
+"密切关注患者感染情况",
+"移植后患者免疫功能较差",
+"积极抗感染治疗有利于FEV1升高及症状缓解"
+]
+},
+"Why": {
+"Reasons": [
+"合并BOS患者更易罹患肺部感染",
+"感染会进一步加重患者BOS症状"
+]
+},
+"Wayforward": {
+"Future directions": [
+"积极抗感染治疗",
+"密切关注患者肺功能情况"
+]
+},
+"Private_Information": [
+"黄主任",
+"千佛山医院"
+]
+}
 Follow above template, direct output json format, no explanation, dont fill in any info if text is too short
 """
 
