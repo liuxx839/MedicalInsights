@@ -77,7 +77,7 @@ def prob_identy(text, model_choice, client):
             {"role": "system", "content": prob_identy_system_message},       
             {"role": "user", "content": text}
         ],
-        temperature=0.1,
+        temperature=0.0,
         max_tokens=500,
     )
     summary = completion.choices[0].message.content
