@@ -90,7 +90,7 @@ def generate_structure_data(text, model_choice, client):
             {"role": "system", "content": generate_structure_table_message},       
             {"role": "user", "content": text}
         ],
-        temperature=0.1,
+        temperature=0.0,
         max_tokens=500
     )
     summary = completion.choices[0].message.content
