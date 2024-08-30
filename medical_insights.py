@@ -61,7 +61,7 @@ def setup_client():
     if model_choice == "llama3-70b-8192" or model_choice == "llama-3.1-70b-versatile" or model_choice == "llama-3.1-8b-instant":
         api_key = os.environ.get("GROQ_API_KEY")
         client = Groq(api_key=api_key)
-    elif model_choice == "glm-4-air":
+    elif model_choice == "glm-4-flash":
         api_key = os.environ.get("ZHIPU_API_KEY")
         client = ZhipuAI(api_key=api_key)
     elif model_choice == "hunyuan-lite":
