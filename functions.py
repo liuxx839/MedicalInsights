@@ -65,7 +65,7 @@ def rewrite(text, institution, department, person, model_choice, client):
             {"role": "user", "content": text}
         ],
         temperature=0.1,
-        max_tokens=500,
+        max_tokens=1200,
     )
     summary = completion.choices[0].message.content
     return summary
