@@ -97,6 +97,7 @@ def get_rewrite_system_message(institution, department, person):
 3。 原文如果存在的机构和人物，需要脱敏, 替换为"一名{institution}的{person}" 相应的部份
 4.其中{{观点}},{{内容间的逻辑关系}},{{进一步的方案}} 要源于原始文本，，要丰富内容。不需要特别指出{{观点}},{{内容间的逻辑关系}},{{进一步的方案}}
 5.只返回改写后的文本即可，无需解释。不要作额外推理
+6. 可以在最后适当提出一些可扩展内容的问题
 '''
 
 prob_identy_system_message = '''
