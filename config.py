@@ -231,7 +231,7 @@ generate_structure_table_message = """
 Template:
 {
 "Who": {
-"Name": "",
+"Title": "",
 "Affiliation": "",
 "Department": ""
 },
@@ -250,7 +250,7 @@ Template:
 Example:
 {
 "Who": {
-"Name": "李教授",
+"Title": "李教授",
 "Affiliation": "北京大学第一医院"
 "Department": "心血管科"
 },
@@ -284,7 +284,7 @@ Example:
 Template:
 {
     "Who": {
-        "Name": "主任",
+        "Title": "主任",
         "Affiliation": "某三甲医院",
         "Department": "神经内科"
     },
@@ -314,7 +314,7 @@ Template:
 Template:
 {
 "Who": {
-"Name": "黄主任",
+"Title": "黄主任",
 "Affiliation": "千佛山医院",
 "Department": ""
 },
