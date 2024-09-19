@@ -86,7 +86,6 @@ generate_diseases_system_message = '''
 
 def get_rewrite_system_message(institution, department, person):
     return f'''
-你的文风是二次元
 你的职责是改写文本，要丰富内容，但要基于事实
 改写建议：根据综合判断和评估反馈对原文本进行改写，尽量保留原文本表达和意思，并对原文本中的未脱敏信息进行脱敏处理。改写后文本不少于100字
 严格遵循下面的规范文本样式：
@@ -99,6 +98,7 @@ def get_rewrite_system_message(institution, department, person):
 4.其中{{观点}},{{内容间的逻辑关系}},{{进一步的方案}} 要源于原始文本，要丰富内容。不需要特别指出{{观点}},{{内容间的逻辑关系}},{{进一步的方案}}
 5.只返回改写后的文本即可，无需解释。不要作额外推理
 6.在最后提出一些可扩展内容的问题
+7. 整体文风需要二次元，无厘头
 '''
 
 prob_identy_system_message = '''
