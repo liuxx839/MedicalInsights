@@ -348,40 +348,129 @@ Template:
 Follow above template, direct output json format in above format, no explanation, dont fill in any info if text is too short
 """
 
+# def json_to_dataframe(json_data):
+#     def flatten_json(data, prefix=''):
+#         items = defaultdict(list)
+#         max_length = 0
+#         for key, value in data.items():
+#             new_key = f"{prefix}/{key}" if prefix else key
+#             if isinstance(value, dict):
+#                 sub_items = flatten_json(value, new_key)
+#                 for sub_key, sub_value in sub_items.items():
+#                     items[sub_key] = sub_value
+#                     max_length = max(max_length, len(sub_value))
+#             elif isinstance(value, list):
+#                 items[new_key] = value
+#                 max_length = max(max_length, len(value))
+#             else:
+#                 items[new_key] = [value]
+#                 max_length = max(max_length, 1)
+        
+#         # 确保所有列的长度一致
+#         for key in items:
+#             items[key] = items[key] + [''] * (max_length - len(items[key]))
+        
+#         return items
+
+#     # 将JSON字符串转换为Python字典
+#     if isinstance(json_data, str):
+#         data = json.loads(json_data)
+#     else:
+#         data = json_data
+
+#     # 展平JSON结构
+#     flat_data = flatten_json(data)
+
+#     # 创建DataFrame
+#     df = pd.DataFrame(flat_data)
+
+#     return df
 def json_to_dataframe(json_data):
+    """
+    将复杂的JSON数据转换为DataFrame格式。
+    支持嵌套的字典、列表，以及混合类型。
+    
+    Args:
+        json_data: JSON字符串或字典对象
+        
+    Returns:
+        pd.DataFrame: 展平后的数据框
+    """
     def flatten_json(data, prefix=''):
         items = defaultdict(list)
         max_length = 0
-        for key, value in data.items():
-            new_key = f"{prefix}/{key}" if prefix else key
-            if isinstance(value, dict):
-                sub_items = flatten_json(value, new_key)
-                for sub_key, sub_value in sub_items.items():
-                    items[sub_key] = sub_value
-                    max_length = max(max_length, len(sub_value))
-            elif isinstance(value, list):
-                items[new_key] = value
-                max_length = max(max_length, len(value))
-            else:
-                items[new_key] = [value]
-                max_length = max(max_length, 1)
         
-        # 确保所有列的长度一致
-        for key in items:
-            items[key] = items[key] + [''] * (max_length - len(items[key]))
-        
+        # 处理基本类型
+        if isinstance(data, (str, int, float, bool)) or data is None:
+            return {prefix: [data]} if prefix else {}
+            
+        # 处理列表
+        elif isinstance(data, list):
+            # 如果列表为空，返回空列表
+            if not data:
+                return {prefix: [[]]} if prefix else {}
+                
+            # 如果列表元素都是基本类型
+            if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
+                return {prefix: [data]} if prefix else {}
+                
+            # 处理包含复杂类型的列表
+            sub_items = defaultdict(list)
+            for item in data:
+                temp = flatten_json(item, '')
+                for key, value in temp.items():
+                    if key in sub_items:
+                        # 合并相同键的值
+                        sub_items[key].extend(value)
+                    else:
+                        sub_items[key] = value
+            
+            # 添加前缀
+            if prefix:
+                return {f"{prefix}/{k}" if k else prefix: v for k, v in sub_items.items()}
+            return sub_items
+            
+        # 处理字典
+        elif isinstance(data, dict):
+            for key, value in data.items():
+                new_key = f"{prefix}/{key}" if prefix else key
+                
+                # 递归处理值
+                flattened = flatten_json(value, new_key)
+                for k, v in flattened.items():
+                    items[k].extend(v if isinstance(v, list) else [v])
+                    max_length = max(max_length, len(items[k]))
+            
+            # 确保所有列的长度一致
+            for key in items:
+                current_length = len(items[key])
+                if current_length < max_length:
+                    items[key].extend([None] * (max_length - current_length))
+                    
+            return items
+            
         return items
 
-    # 将JSON字符串转换为Python字典
+    # 转换输入数据
     if isinstance(json_data, str):
-        data = json.loads(json_data)
+        try:
+            data = json.loads(json_data)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON string: {str(e)}")
     else:
         data = json_data
 
     # 展平JSON结构
     flat_data = flatten_json(data)
+    
+    # 如果没有数据，返回空DataFrame
+    if not flat_data:
+        return pd.DataFrame()
 
     # 创建DataFrame
     df = pd.DataFrame(flat_data)
-
+    
+    # 清理列名，移除开头的/
+    df.columns = [col[1:] if col.startswith('/') else col for col in df.columns]
+    
     return df
