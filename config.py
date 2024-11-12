@@ -396,65 +396,72 @@ def json_to_dataframe(json_data):
     Returns:
         pd.DataFrame: 展平后的数据框
     """
-    def flatten_json(data, prefix=''):
+    def extract_list_length(data):
+        """递归查找最长列表的长度"""
+        if isinstance(data, dict):
+            return max([extract_list_length(v) for v in data.values()], default=1)
+        elif isinstance(data, list):
+            if not data:
+                return 1
+            if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
+                return 1
+            return len(data)
+        return 1
+
+    def flatten_json(data, prefix='', row_index=0, max_rows=1):
         items = defaultdict(list)
         
         # 处理基本类型
         if isinstance(data, (str, int, float, bool)) or data is None:
-            return {prefix: [data]} if prefix else {}
+            items[prefix] = [data] * max_rows if prefix else []
+            return items
             
         # 处理列表
         elif isinstance(data, list):
-            # 如果列表为空，返回空列表
             if not data:
-                return {prefix: [[]]} if prefix else {}
+                items[prefix] = [[]] * max_rows if prefix else []
+                return items
                 
             # 如果列表元素都是基本类型，作为单个单元格的值
             if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
-                return {prefix: [str(data)]} if prefix else {}
+                items[prefix] = [data] * max_rows if prefix else []
+                return items
                 
-            # 处理包含复杂类型的列表 - 每个元素创建新行
-            sub_items = defaultdict(list)
-            for item in data:
+            # 处理包含复杂类型的列表
+            for i, item in enumerate(data):
                 if isinstance(item, dict):
-                    temp = flatten_json(item, '')
-                    # 确保所有已存在的键都有对应的空值
-                    for existing_key in sub_items.keys():
-                        if existing_key not in temp:
-                            sub_items[existing_key].append(None)
-                    # 添加新的键值对
-                    for key, value in temp.items():
-                        # 对已存在的键补充空值
-                        if key not in sub_items:
-                            sub_items[key].extend([None] * (len(list(sub_items.values())[0]) - 1) if sub_items else [])
-                        sub_items[key].extend(value)
+                    temp = flatten_json(item, prefix, i, len(data))
+                    for k, v in temp.items():
+                        if not items[k]:
+                            items[k] = [None] * max_rows
+                        items[k][i] = v[0] if v else None
                 else:
-                    # 非字典类型的元素，直接添加到列表
                     if prefix:
-                        sub_items[prefix].append(str(item))
+                        if not items[prefix]:
+                            items[prefix] = [None] * max_rows
+                        items[prefix][i] = item
             
-            # 添加前缀
-            if prefix:
-                return {f"{prefix}/{k}" if k else prefix: v for k, v in sub_items.items()}
-            return sub_items
+            return items
             
         # 处理字典
         elif isinstance(data, dict):
+            max_list_length = extract_list_length(data)
+            
             for key, value in data.items():
                 new_key = f"{prefix}/{key}" if prefix else key
                 
                 # 递归处理值
-                flattened = flatten_json(value, new_key)
-                for k, v in flattened.items():
-                    if not items[k]:  # 如果是新键
-                        items[k] = v
-                    else:  # 如果键已存在
-                        # 确保两个列表长度相同
-                        max_len = max(len(items[k]), len(v))
-                        items[k].extend([None] * (max_len - len(items[k])))
-                        if len(v) < max_len:
-                            v.extend([None] * (max_len - len(v)))
-                        items[k] = v
+                temp = flatten_json(value, new_key, row_index, max_list_length)
+                for k, v in temp.items():
+                    if not items[k]:
+                        items[k] = [None] * max_rows
+                    if isinstance(v, list):
+                        if len(v) == max_rows:
+                            items[k] = v
+                        else:
+                            items[k] = v * max_rows
+                    else:
+                        items[k] = [v] * max_rows
             
             return items
             
@@ -469,8 +476,11 @@ def json_to_dataframe(json_data):
     else:
         data = json_data
 
+    # 计算需要的总行数
+    max_rows = extract_list_length(data)
+    
     # 展平JSON结构
-    flat_data = flatten_json(data)
+    flat_data = flatten_json(data, max_rows=max_rows)
     
     # 如果没有数据，返回空DataFrame
     if not flat_data:
@@ -481,5 +491,8 @@ def json_to_dataframe(json_data):
     
     # 清理列名，移除开头的/
     df.columns = [col[1:] if col.startswith('/') else col for col in df.columns]
+    
+    # 删除全为空值的行
+    df = df.dropna(how='all')
     
     return df
