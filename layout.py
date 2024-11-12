@@ -158,8 +158,8 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     rewrite_text = rewrite(user_input, institution, department, person, model_choice, client)
     try:
         table_text = generate_structure_data(user_input, model_choice, client)
-        # st.session_state.table_df = json_to_dataframe(table_text)
-        st.session_state.table_df = table_text
+        st.session_state.table_df = json_to_dataframe(table_text)
+        # st.session_state.table_df = table_text
     except Exception as e:
         st.error(f"生成表格数据时出错: {str(e)}")
         st.session_state.table_df = None   
@@ -191,7 +191,7 @@ def display_rewrite_results():
             if 'table_df' in st.session_state and st.session_state.table_df is not None:
                 st.markdown("<h3 style='font-size: 13px; font-weight: 800;'>Extracted Information:</h3>", unsafe_allow_html=True)
                 # st.dataframe(st.session_state.table_df)
-                st.text_area(st.session_state.table_df)
+                st.session_state.table_df
             else:
                 st.warning("No extracted information available.")
 
