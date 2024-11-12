@@ -388,7 +388,7 @@ Follow above template, direct output json format in above format, no explanation
 def json_to_dataframe(json_data):
     """
     将复杂的JSON数据转换为DataFrame格式。
-    支持嵌套的字典、列表，以及混合类型。
+    支持嵌套的字典、列表，将多条数据分别放入不同行。
     
     Args:
         json_data: JSON字符串或字典对象
@@ -398,7 +398,6 @@ def json_to_dataframe(json_data):
     """
     def flatten_json(data, prefix=''):
         items = defaultdict(list)
-        max_length = 0
         
         # 处理基本类型
         if isinstance(data, (str, int, float, bool)) or data is None:
@@ -410,20 +409,29 @@ def json_to_dataframe(json_data):
             if not data:
                 return {prefix: [[]]} if prefix else {}
                 
-            # 如果列表元素都是基本类型
+            # 如果列表元素都是基本类型，作为单个单元格的值
             if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
-                return {prefix: [data]} if prefix else {}
+                return {prefix: [str(data)]} if prefix else {}
                 
-            # 处理包含复杂类型的列表
+            # 处理包含复杂类型的列表 - 每个元素创建新行
             sub_items = defaultdict(list)
             for item in data:
-                temp = flatten_json(item, '')
-                for key, value in temp.items():
-                    if key in sub_items:
-                        # 合并相同键的值
+                if isinstance(item, dict):
+                    temp = flatten_json(item, '')
+                    # 确保所有已存在的键都有对应的空值
+                    for existing_key in sub_items.keys():
+                        if existing_key not in temp:
+                            sub_items[existing_key].append(None)
+                    # 添加新的键值对
+                    for key, value in temp.items():
+                        # 对已存在的键补充空值
+                        if key not in sub_items:
+                            sub_items[key].extend([None] * (len(list(sub_items.values())[0]) - 1) if sub_items else [])
                         sub_items[key].extend(value)
-                    else:
-                        sub_items[key] = value
+                else:
+                    # 非字典类型的元素，直接添加到列表
+                    if prefix:
+                        sub_items[prefix].append(str(item))
             
             # 添加前缀
             if prefix:
@@ -438,15 +446,16 @@ def json_to_dataframe(json_data):
                 # 递归处理值
                 flattened = flatten_json(value, new_key)
                 for k, v in flattened.items():
-                    items[k].extend(v if isinstance(v, list) else [v])
-                    max_length = max(max_length, len(items[k]))
+                    if not items[k]:  # 如果是新键
+                        items[k] = v
+                    else:  # 如果键已存在
+                        # 确保两个列表长度相同
+                        max_len = max(len(items[k]), len(v))
+                        items[k].extend([None] * (max_len - len(items[k])))
+                        if len(v) < max_len:
+                            v.extend([None] * (max_len - len(v)))
+                        items[k] = v
             
-            # 确保所有列的长度一致
-            for key in items:
-                current_length = len(items[key])
-                if current_length < max_length:
-                    items[key].extend([None] * (max_length - current_length))
-                    
             return items
             
         return items
