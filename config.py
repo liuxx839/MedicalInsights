@@ -394,7 +394,7 @@ def json_to_dataframe(json_data):
         json_data: JSON字符串或字典对象
         
     Returns:
-        pd.DataFrame: 展平后的数据框
+        pd.DataFrame: 展平后的数据框，对于多记录数据总是返回多行
     """
     def extract_list_length(data):
         """递归查找最长列表的长度"""
@@ -403,8 +403,7 @@ def json_to_dataframe(json_data):
         elif isinstance(data, list):
             if not data:
                 return 1
-            if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
-                return 1
+            # 移除对基本类型列表的特殊处理
             return len(data)
         return 1
 
@@ -419,14 +418,21 @@ def json_to_dataframe(json_data):
         # 处理列表
         elif isinstance(data, list):
             if not data:
-                items[prefix] = [[]] * max_rows if prefix else []
+                items[prefix] = [None] * max_rows if prefix else []
                 return items
-                
-            # 如果列表元素都是基本类型，作为单个单元格的值
+            
+            # 统一处理所有类型的列表
             if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
-                items[prefix] = [data] * max_rows if prefix else []
+                # 基本类型列表也展开成多行
+                if prefix:
+                    items[prefix] = []
+                    for item in data:
+                        items[prefix].append(item)
+                    # 如果当前列表长度小于最大行数，用None填充
+                    if len(items[prefix]) < max_rows:
+                        items[prefix].extend([None] * (max_rows - len(items[prefix])))
                 return items
-                
+            
             # 处理包含复杂类型的列表
             for i, item in enumerate(data):
                 if isinstance(item, dict):
@@ -459,7 +465,10 @@ def json_to_dataframe(json_data):
                         if len(v) == max_rows:
                             items[k] = v
                         else:
-                            items[k] = v * max_rows
+                            # 确保列表值正确对齐到行
+                            items[k][:len(v)] = v
+                            if len(v) < max_rows:
+                                items[k][len(v):] = [None] * (max_rows - len(v))
                     else:
                         items[k] = [v] * max_rows
             
@@ -476,6 +485,12 @@ def json_to_dataframe(json_data):
     else:
         data = json_data
 
+    # 如果输入是列表，确保作为多行处理
+    if isinstance(data, list):
+        if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
+            # 基本类型列表转换为单列多行DataFrame
+            return pd.DataFrame({"value": data})
+        
     # 计算需要的总行数
     max_rows = extract_list_length(data)
     
