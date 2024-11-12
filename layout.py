@@ -158,8 +158,8 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     rewrite_text = rewrite(user_input, institution, department, person, model_choice, client)
     try:
         table_text = generate_structure_data(user_input, model_choice, client)
-        # st.session_state.table_df = json_to_dataframe(table_text)
-        st.session_state.table_df = table_text
+        st.session_state.table_df = json_to_dataframe(table_text)
+        # st.session_state.table_df = table_text
     except Exception as e:
         st.error(f"生成表格数据时出错: {str(e)}")
         st.session_state.table_df = None   
