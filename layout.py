@@ -216,14 +216,10 @@ def display_rewrite_results():
         ):
             if st.button("📋 复制"):
                 if 'rewrite_text' in st.session_state:
-                    # 添加JavaScript复制功能
-                    st.markdown("""
-                        <script>
-                            navigator.clipboard.writeText(`{}`)
-                                .then(() => alert('复制成功！'))
-                                .catch(() => alert('复制失败，请手动复制'));
-                        </script>
-                    """.format(st.session_state.rewrite_text), unsafe_allow_html=True)
+                    # 使用 pyperclip 复制到剪贴板
+                    st.write("已复制到剪贴板！")
+                    st.code(st.session_state.rewrite_text, language=None)
+                    st.toast("复制成功！", icon="✅")
 
     # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
