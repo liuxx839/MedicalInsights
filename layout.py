@@ -63,7 +63,7 @@ def setup_sidebar(
         <div style="font-size:14px;">
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
         以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
-        * Insight Copilot：您可以在下面提交您的初稿，然后使用此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+        * Insight Copilot：您可以在下面提交您的初稿，然后使���此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
         </div>
         """, unsafe_allow_html=True)
         
@@ -97,7 +97,7 @@ def setup_sidebar(
                 st.session_state.clear_clicked = True
                 st.rerun()
         
-        st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
+        st.markdown("## **Step 2: 请根据拜访���选择如下信息用于Rewrite🧑‍⚕️**")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.institution = st.selectbox("Institution", institutions)
@@ -219,11 +219,26 @@ def display_rewrite_results():
             }
             """
         ):
-            if st.button("📋 复制"):
-                if 'rewrite_text' in st.session_state:
-                    # 显示代码块以便复制
-                    st.code(st.session_state.rewrite_text, language=None)
-                    st.toast("请点击上方代码框右上角的复制按钮进行复制", icon="ℹ️")
+            if 'rewrite_text' in st.session_state:
+                # 添加JavaScript复制功能
+                st.markdown("""
+                    <button 
+                        onclick="
+                            navigator.clipboard.writeText(`{}`)
+                            .then(() => alert('复制成功！'))
+                            .catch(() => alert('复制失败，请手动复制'))
+                        "
+                        style="
+                            background-color: white;
+                            color: #7A00E6;
+                            border: 1px solid #7A00E6;
+                            padding: 5px 10px;
+                            cursor: pointer;
+                        "
+                    >
+                        📋 复制
+                    </button>
+                """.format(st.session_state.rewrite_text), unsafe_allow_html=True)
 
     # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
