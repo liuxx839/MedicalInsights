@@ -21,17 +21,17 @@ primary_topics_list = list(topics.keys())
 
 # 颜色映射，超过7个颜色的primary_topics_list都赋予粉色
 color_list = [
-    "#FF6347",  # 番茄红
-    "#4682B4",  # 钢蓝色
-    "#32CD32",  # 石灰绿色
-    "#FFD700",  # 金色
-    "#EE82EE",  # 紫罗兰
-    "#8A2BE2",  # 蓝紫色
-    "#FF4500"   # 橙红色
+    "#067647",  # 绿色
+    "#B42318",  # 红色
+    "#B54708",  # 棕色
+    "#175CD3",  # 蓝色
+    "#282828",  # 黑色
+    "#7A00E6",  # 紫色
 ]
 
-# 默认粉色用于超过7个颜色的主题
-default_color = "#FF69B4"  # 粉色
+# 默认紫色用于超过6个颜色的主题
+default_color = "#7A00E6"  # 紫色
+
 
 # 按照顺序为 primary_topics_list 分配颜色
 colors = {}
