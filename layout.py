@@ -66,6 +66,11 @@ def setup_sidebar(
         </div>
         """, unsafe_allow_html=True)
         
+        # 在文本框之前检查是否需要清除
+        if "clear_clicked" in st.session_state and st.session_state.clear_clicked:
+            st.session_state.user_input = ""
+            st.session_state.clear_clicked = False
+            
         st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
         user_input = st.text_area("", placeholder="请输入内容", key="user_input", height=200)
         
@@ -81,8 +86,8 @@ def setup_sidebar(
                     border: 1px solid #7A00E6;
                 }"""
             ):
-                if st.button("一键清除"):
-                    st.session_state["user_input"] = ""
+                if st.button("一键清除", key="clear_btn"):
+                    st.session_state.clear_clicked = True
                     st.experimental_rerun()
         
         with col2:
