@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+import time
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
@@ -67,7 +68,20 @@ def setup_sidebar(
         """, unsafe_allow_html=True)
         
         st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
-        user_input = st.text_area("",placeholder="请输入内容", key="user_input", height=200)
+        
+        # 在创建文本框之前检查是否需要清除
+        if "clear_clicked" not in st.session_state:
+            st.session_state.clear_clicked = False
+        
+        # 如果清除按钮被点击，初始化一个空的key
+        if st.session_state.clear_clicked:
+            key = "user_input_" + str(hash(time.time()))
+            st.session_state.clear_clicked = False
+        else:
+            key = "user_input"
+        
+        # 使用动态key创建文本框
+        user_input = st.text_area("", placeholder="请输入内容", key=key, height=200)
         
         # 添加一键清除和复制按钮
         col1, col2 = st.columns(2)
@@ -82,7 +96,7 @@ def setup_sidebar(
                 }"""
             ):
                 if st.button("一键清除"):
-                    st.session_state.user_input = ""
+                    st.session_state.clear_clicked = True
                     st.rerun()
         
         with col2:
@@ -99,7 +113,7 @@ def setup_sidebar(
                     st.write(
                         f"""
                         <script>
-                            navigator.clipboard.writeText('{st.session_state.user_input}');
+                            navigator.clipboard.writeText('{user_input}');
                         </script>
                         """,
                         unsafe_allow_html=True,
