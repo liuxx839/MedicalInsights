@@ -68,6 +68,44 @@ def setup_sidebar(
         
         st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
         user_input = st.text_area("",placeholder="请输入内容", key="user_input", height=200)
+        
+        # 添加一键清除和复制按钮
+        col1, col2 = st.columns(2)
+        with col1:
+            with stylable_container(
+                "clear_button",
+                css_styles="""
+                button {
+                    background-color: white;
+                    color: #7A00E6;
+                    border: 1px solid #7A00E6;
+                }"""
+            ):
+                if st.button("一键清除"):
+                    st.session_state.user_input = ""
+                    st.rerun()
+        
+        with col2:
+            with stylable_container(
+                "copy_button",
+                css_styles="""
+                button {
+                    background-color: white;
+                    color: #7A00E6;
+                    border: 1px solid #7A00E6;
+                }"""
+            ):
+                if st.button("复制"):
+                    st.write(
+                        f"""
+                        <script>
+                            navigator.clipboard.writeText('{st.session_state.user_input}');
+                        </script>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.toast("已复制到剪贴板！")
+        
         st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
         col1, col2, col3 = st.columns(3)
         with col1:
