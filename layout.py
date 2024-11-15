@@ -239,18 +239,9 @@ def display_rewrite_results():
     )
 
 def display_rewritten_text():
-    st.markdown("### Editable Rewritten Text:")
-    
-    col1, col2 = st.columns([0.9, 0.1])  # 创建两列，一列放文本框，一列放复制按钮
-    
+    col1, col2 = st.columns([0.7, 0.3])
     with col1:
-        rewritten_text = st.text_area(
-            "",
-            value=st.session_state.get('rewritten_text', ''),
-            height=300,
-            key="rewritten_text_area"
-        )
-    
+        st.markdown("### Editable Rewritten Text:")
     with col2:
         with stylable_container(
             "copy_button",
@@ -259,8 +250,8 @@ def display_rewritten_text():
                 background-color: white;
                 color: #7A00E6;
                 border: 1px solid #7A00E6;
-                margin-top: 5px;
                 padding: 5px 10px;
+                margin-top: 15px;  /* 调整按钮垂直位置以对齐标题 */
             }
             button:hover {
                 background-color: #7A00E6;
@@ -268,6 +259,14 @@ def display_rewritten_text():
             }
             """
         ):
-            if st.button("📋", help="点击复制文本"):
-                st.code(rewritten_text, language=None)
+            if st.button("📋 复制全文"):
+                st.code(st.session_state.get('rewritten_text', ''), language=None)
                 st.toast("请点击上方代码框右上角的复制按钮进行复制", icon="ℹ️")
+    
+    # 文本区域
+    rewritten_text = st.text_area(
+        "",
+        value=st.session_state.get('rewritten_text', ''),
+        height=300,
+        key="rewritten_text_area"
+    )
