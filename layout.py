@@ -4,6 +4,7 @@ import time
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
+import pyperclip
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
@@ -110,15 +111,11 @@ def setup_sidebar(
                 }"""
             ):
                 if st.button("复制"):
-                    st.write(
-                        f"""
-                        <script>
-                            navigator.clipboard.writeText('{user_input}');
-                        </script>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    st.toast("已复制到剪贴板！")
+                    try:
+                        pyperclip.copy(user_input)
+                        st.toast("已复制到剪贴板！", icon="✅")
+                    except Exception as e:
+                        st.toast("复制失败，请手动复制。", icon="❌")
         
         st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
         col1, col2, col3 = st.columns(3)
