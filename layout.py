@@ -214,26 +214,16 @@ def display_rewrite_results():
                 margin-top: 15px;
             }"""
         ):
-            if 'rewrite_text' in st.session_state:
-                # 添加JavaScript复制功能
-                st.markdown("""
-                    <button 
-                        onclick="
+            if st.button("📋 复制"):
+                if 'rewrite_text' in st.session_state:
+                    # 添加JavaScript复制功能
+                    st.markdown("""
+                        <script>
                             navigator.clipboard.writeText(`{}`)
-                            .then(() => alert('复制成功！'))
-                            .catch(() => alert('复制失败，请手动复制'))
-                        "
-                        style="
-                            background-color: white;
-                            color: #7A00E6;
-                            border: 1px solid #7A00E6;
-                            padding: 5px 10px;
-                            cursor: pointer;
-                        "
-                    >
-                        📋 复制
-                    </button>
-                """.format(st.session_state.rewrite_text), unsafe_allow_html=True)
+                                .then(() => alert('复制成功！'))
+                                .catch(() => alert('复制失败，请手动复制'));
+                        </script>
+                    """.format(st.session_state.rewrite_text), unsafe_allow_html=True)
 
     # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
