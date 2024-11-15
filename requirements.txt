@@ -5,3 +5,4 @@ openai
 tencentcloud-sdk-python
 pandas
 streamlit_extras
+pyperclip
