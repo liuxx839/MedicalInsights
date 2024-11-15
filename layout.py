@@ -237,3 +237,67 @@ def display_rewrite_results():
         """,
         unsafe_allow_html=True
     )
+
+def display_rewritten_text():
+    # ... existing code ...
+    
+    st.markdown("### Editable Rewritten Text:")
+    
+    # 添加带有悬浮复制按钮的容器
+    st.markdown("""
+        <style>
+        .copy-button-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 0.5rem;
+            background-color: #7A00E6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .copy-button-container:hover .copy-button {
+            opacity: 1;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # 创建文本区域和复制按钮
+    st.markdown('<div class="copy-button-container">', unsafe_allow_html=True)
+    rewritten_text = st.text_area(
+        "",
+        value=st.session_state.get('rewritten_text', ''),
+        height=300,
+        key="rewritten_text_area"
+    )
+    st.markdown(
+        f"""
+        <button class="copy-button" onclick="navigator.clipboard.writeText(`{rewritten_text}`).then(() => {{
+            const toast = document.createElement('div');
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = '#4CAF50';
+            toast.style.color = 'white';
+            toast.style.padding = '10px';
+            toast.style.borderRadius = '4px';
+            toast.textContent = '已复制到剪贴板！';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }})">
+            📋 复制
+        </button>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # ... existing code ...
