@@ -110,37 +110,8 @@ def setup_sidebar(
                 }"""
             ):
                 if st.button("复制"):
-                    # 使用 JavaScript 实现复制功能
-                    js_code = f"""
-                        <script>
-                        function copyToClipboard() {{
-                            const text = `{user_input}`;
-                            if (navigator.clipboard && window.isSecureContext) {{
-                                navigator.clipboard.writeText(text).then(() => {{
-                                    window.parent.document.querySelector('[data-testid="stToast"]').innerHTML = 
-                                        '<div class="stToast" style="color: green;">已复制到剪贴板！</div>';
-                                }});
-                            }} else {{
-                                // 创建临时文本区域
-                                const textArea = document.createElement("textarea");
-                                textArea.value = text;
-                                document.body.appendChild(textArea);
-                                textArea.select();
-                                try {{
-                                    document.execCommand('copy');
-                                    window.parent.document.querySelector('[data-testid="stToast"]').innerHTML = 
-                                        '<div class="stToast" style="color: green;">已复制到剪贴板！</div>';
-                                }} catch (err) {{
-                                    console.error('复制失败:', err);
-                                }}
-                                document.body.removeChild(textArea);
-                            }}
-                        }}
-                        copyToClipboard();
-                        </script>
-                    """
-                    st.components.v1.html(js_code, height=0)
-                    st.toast("已复制到剪贴板！")
+                    st.code(user_input, language=None)
+                    st.toast("请点击上方代码框右上角的复制按钮进行复制", icon="ℹ️")
         
         st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
         col1, col2, col3 = st.columns(3)
