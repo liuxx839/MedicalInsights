@@ -67,7 +67,7 @@ def setup_sidebar(
         """, unsafe_allow_html=True)
         
         st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
-        user_input = st.text_area("",placeholder="请输入内容", key="user_input", height=200)
+        user_input = st.text_area("", placeholder="请输入内容", key="user_input", height=200)
         
         # 添加清除和复制按钮
         col1, col2 = st.columns(2)
@@ -81,9 +81,9 @@ def setup_sidebar(
                     border: 1px solid #7A00E6;
                 }"""
             ):
-                if st.button("一键清除", use_container_width=True):
-                    st.session_state.user_input = ""
-                    st.rerun()
+                if st.button("一键清除"):
+                    st.session_state["user_input"] = ""
+                    st.experimental_rerun()
         
         with col2:
             with stylable_container(
@@ -95,7 +95,7 @@ def setup_sidebar(
                     border: 1px solid #7A00E6;
                 }"""
             ):
-                if st.button("复制内容", use_container_width=True):
+                if st.button("复制内容"):
                     st.write(
                         f"""
                         <script>
