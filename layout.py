@@ -83,35 +83,19 @@ def setup_sidebar(
         # 使用动态key创建文本框
         user_input = st.text_area("", placeholder="请输入内容", key=key, height=200)
         
-        # 添加一键清除和复制按钮
-        col1, col2 = st.columns(2)
-        with col1:
-            with stylable_container(
-                "clear_button",
-                css_styles="""
-                button {
-                    background-color: white;
-                    color: #7A00E6;
-                    border: 1px solid #7A00E6;
-                }"""
-            ):
-                if st.button("一键清除"):
-                    st.session_state.clear_clicked = True
-                    st.rerun()
-        
-        with col2:
-            with stylable_container(
-                "copy_button",
-                css_styles="""
-                button {
-                    background-color: white;
-                    color: #7A00E6;
-                    border: 1px solid #7A00E6;
-                }"""
-            ):
-                if st.button("复制"):
-                    st.code(user_input, language=None)
-                    st.toast("请点击上方代码框右上角的复制按钮进行复制", icon="ℹ️")
+        # 只保留清除按钮
+        with stylable_container(
+            "clear_button",
+            css_styles="""
+            button {
+                background-color: white;
+                color: #7A00E6;
+                border: 1px solid #7A00E6;
+            }"""
+        ):
+            if st.button("一键清除"):
+                st.session_state.clear_clicked = True
+                st.rerun()
         
         st.markdown("## **Step 2: 请根据拜访，选择如下信息用于Rewrite🧑‍⚕️**")
         col1, col2, col3 = st.columns(3)
