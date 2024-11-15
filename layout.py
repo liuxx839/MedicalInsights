@@ -198,7 +198,34 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.potential_issues = potential_issues
 
 def display_rewrite_results():
-    st.subheader("Editable Rewritten Text:")
+    # 使用列布局来放置标题和复制按钮
+    col1, col2 = st.columns([0.85, 0.15])
+    with col1:
+        st.subheader("Editable Rewritten Text:")
+    with col2:
+        with stylable_container(
+            "copy_button",
+            css_styles="""
+            button {
+                background-color: white;
+                color: #7A00E6;
+                border: 1px solid #7A00E6;
+                padding: 5px 10px;
+                margin-top: 15px;
+            }
+            button:hover {
+                background-color: #7A00E6;
+                color: white;
+            }
+            """
+        ):
+            if st.button("📋 复制"):
+                if 'rewrite_text' in st.session_state:
+                    # 显示代码块以便复制
+                    st.code(st.session_state.rewrite_text, language=None)
+                    st.toast("请点击上方代码框右上角的复制按钮进行复制", icon="ℹ️")
+
+    # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
