@@ -63,7 +63,7 @@ def setup_sidebar(
         <div style="font-size:14px;">
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
         以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
-        * Insight Copilot：您可以在下面提交您的初稿，然后使工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+        * Insight Copilot：您可以在下面提交您的初稿，然后使此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
         </div>
         """, unsafe_allow_html=True)
         
@@ -198,8 +198,9 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.potential_issues = potential_issues
 
 def display_rewrite_results():
+    # 移除原有的列布局，直接显示标题
     st.subheader("Editable Rewritten Text:")
-    
+
     # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
@@ -207,44 +208,23 @@ def display_rewrite_results():
     else:
         user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'", height=300)
 
-    # 添加两个紧挨着的按钮
-    col1, col2 = st.columns([0.5, 0.5])
-    with col1:
-        with stylable_container(
-            "copy_button",
-            css_styles="""
-            button {
-                background-color: white;
-                color: #7A00E6;
-                border: 1px solid #7A00E6;
-            }"""
-        ):
-            if st.button("📋 复制", key="copy_button_results"):
-                if 'rewrite_text' in st.session_state:
-                    st.write("请点击下方内容右上角进行复制！")
-                    st.code(st.session_state.rewrite_text, language=None)
-                    st.toast("请遵循下面提示进行操作！", icon="😄")
+    # 将复制按钮移到文本框下方
+    with stylable_container(
+        "copy_button",
+        css_styles="""
+        button {
+            background-color: white;
+            color: #7A00E6;
+            border: 1px solid #7A00E6;
+            padding: 5px 10px;
+        }"""
+    ):
+        if st.button("📋 复制"):
+            if 'rewrite_text' in st.session_state:
+                st.write("请点击下方内容右上角进行复制！")
+                st.code(st.session_state.rewrite_text, language=None)
+                st.toast("请遵循下面提示进行操作！", icon="😄")
     
-    with col2:
-        with stylable_container(
-            "rerun_button",
-            css_styles="""
-            button {
-                background-color: #7A00E6;
-                color: white;
-            }"""
-        ):
-            if st.button("Rewrite   →", key="rewrite_button_results", use_container_width=True):
-                process_rewrite(user_editable_text, 
-                              st.session_state.get('institution'), 
-                              st.session_state.get('department'), 
-                              st.session_state.get('person'), 
-                              st.session_state.get('model_choice', 'default'), 
-                              st.session_state.get('client'), 
-                              rewrite, 
-                              generate_structure_data, 
-                              prob_identy)
-
     if 'rewrite_text' in st.session_state:
         with st.expander("Assessment Feedback (click for details)"):
             background_color = determine_issue_severity(st.session_state.potential_issues)
