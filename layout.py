@@ -93,7 +93,7 @@ def setup_sidebar(
                 border: 1px solid #7A00E6;
             }"""
         ):
-            if st.button("一键清除"):
+            if st.button("🗑️一键清除"):
                 st.session_state.clear_clicked = True
                 st.rerun()
         
@@ -217,9 +217,9 @@ def display_rewrite_results():
             if st.button("📋 复制"):
                 if 'rewrite_text' in st.session_state:
                     # 使用 pyperclip 复制到剪贴板
-                    st.write("已复制到剪贴板！")
+                    st.write("请点击下方内容右上角进行复制！")
                     st.code(st.session_state.rewrite_text, language=None)
-                    st.toast("复制成功！", icon="✅")
+                    st.toast("请遵循下面提示进行操作！", icon="😄")
 
     # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
