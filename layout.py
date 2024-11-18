@@ -12,10 +12,10 @@ def setup_layout(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
-    # 将标题放在整个页面最上面的中间，并在后面添加空白行
+    # 更新标题样式
     st.markdown("""
-    <h1 style='text-align: center;'>Medical Insights Copilot</h1>
-    <h6 style='text-align: center;'>改写的结果及反馈将呈现在下方，请根据自己的判断进行使用</h6>
+    <h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Medical Insights Copilot</h1>
+    <h6 style='text-align: center; font-size: 12px;'>改写的结果及反馈将呈现在下方，请根据自己的判断进行使用</h6>
     <br><br><br>
     """, unsafe_allow_html=True)
     
@@ -58,16 +58,16 @@ def setup_sidebar(
     # """, unsafe_allow_html=True)
 
     with st.sidebar:
-        ## 原有的markdown内容
+        # 更新说明文本的字体大小
         st.markdown("""
-        <div style="font-size:14px;">
+        <div style="font-size:12px;">
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
         以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
         * Insight Copilot：您可以在下面提交您的初稿，然后使此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
         </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("## **Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:**")
+        st.markdown("<p style='font-size: 14px; font-weight: bold;'>Step 1: 请根据上面的4W要求填写您的Insight初稿 ✏️:</p>", unsafe_allow_html=True)
         
         # 在创建文本框之前检查是否需要清除
         if "clear_clicked" not in st.session_state:
@@ -97,7 +97,7 @@ def setup_sidebar(
                 st.session_state.clear_clicked = True
                 st.rerun()
         
-        st.markdown("## **Step 2: 请根据拜访选择如下信息用于Rewrite🧑‍⚕️**")
+        st.markdown("<p style='font-size: 14px; font-weight: bold;'>Step 2: 请根据拜访选择如下信息用于Rewrite🧑‍⚕️</p>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.institution = st.selectbox("Institution", institutions)
@@ -112,7 +112,7 @@ def setup_sidebar(
             #     tags = generate_tag(user_input, model_choice, client)
             #     unique_tags = list(set(tags.split(",")))
             #     st.session_state.tags = ",".join(unique_tags)
-
+            #
             #     disease_tags = generate_diseases_tag(user_input, model_choice, client)
             #     unique_disease_tags = list(set(disease_tags.split(",")))
             #     st.session_state.disease_tags = ",".join(unique_disease_tags)
@@ -198,8 +198,8 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.potential_issues = potential_issues
 
 def display_rewrite_results():
-    # 移除原有的列布局，直接显示标题
-    st.subheader("Editable Rewritten Text:")
+    # 更新标题和文本大小
+    st.markdown("<p style='font-size: 14px; font-weight: bold;'>Editable Rewritten Text:</p>", unsafe_allow_html=True)
 
     # 原有的文本区域代码
     if 'rewrite_text' in st.session_state:
@@ -227,10 +227,11 @@ def display_rewrite_results():
     
     if 'rewrite_text' in st.session_state:
         with st.expander("Assessment Feedback (click for details)"):
+            # 更新反馈文本大小
             background_color = determine_issue_severity(st.session_state.potential_issues)
             st.markdown(
                 f"""
-                <div style="background-color: {background_color}; color: black; padding: 10px; border-radius: 5px; font-family: sans-serif;">
+                <div style="background-color: {background_color}; color: black; padding: 10px; border-radius: 5px; font-family: sans-serif; font-size: 12px;">
                     {st.session_state.potential_issues}
                 </div>
                 """,
@@ -238,7 +239,7 @@ def display_rewrite_results():
             )
             
             if 'table_df' in st.session_state and st.session_state.table_df is not None:
-                st.markdown("<h3 style='font-size: 13px; font-weight: 800;'>Extracted Information:</h3>", unsafe_allow_html=True)
+                st.markdown("<p style='font-size: 12px; font-weight: bold;'>Extracted Information:</p>", unsafe_allow_html=True)
                 st.dataframe(st.session_state.table_df)
             else:
                 st.warning("No extracted information available.")
