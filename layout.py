@@ -81,8 +81,7 @@ def setup_sidebar(
             key = "user_input"
         
         # 使用动态key创建文本框
-        user_input = st.text_area("", placeholder="请输入内容.提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
-        st.markdown("提示：您可以按下 **Ctrl + A** 全选内容，接着按下 **Ctrl + C** 复制")
+        user_input = st.text_area("", placeholder="请输入内容.\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
 
         # 只保留清除按钮
         with stylable_container(
@@ -207,7 +206,7 @@ def display_rewrite_results():
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
     else:
-        user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'. Tip: You can press Ctrl + A to select all the content, then press Ctrl + C to copy it.", height=300)
+        user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'.\n Tip: You can press Ctrl + A to select all the content, then press Ctrl + C to copy it.", height=300)
 
     # 将复制按钮移到文本框下方
     with stylable_container(
