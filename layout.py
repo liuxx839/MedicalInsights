@@ -219,7 +219,7 @@ def display_rewrite_results():
                 border: 1px solid #7A00E6;
             }"""
         ):
-            if st.button("📋 复制"):
+            if st.button("📋 复制", key="copy_button_results"):
                 if 'rewrite_text' in st.session_state:
                     st.write("请点击下方内容右上角进行复制！")
                     st.code(st.session_state.rewrite_text, language=None)
@@ -234,7 +234,7 @@ def display_rewrite_results():
                 color: white;
             }"""
         ):
-            if st.button("Rewrite   →", use_container_width=True):
+            if st.button("Rewrite   →", key="rewrite_button_results", use_container_width=True):
                 process_rewrite(user_editable_text, 
                               st.session_state.get('institution'), 
                               st.session_state.get('department'), 
