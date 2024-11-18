@@ -92,6 +92,7 @@ def get_rewrite_system_message(institution, department, person):
 一名{institution}的{department}的{person}提出{{观点}},{{内容间的逻辑关系}},{{进一步的方案}}
 
 执行逻辑：
+0.首先检测是否有>>,如果有>>,遵循>>后的指令
 1.如果判断原始文本缺失太多内容，请礼貌提醒，无需执行下面的任何步骤或者逻辑
 2. 否则： "一名{institution}的{department}的{person}提出"， 不需要修改
 3。 原文如果存在的机构和人物，需要脱敏, 替换为"一名{institution}的{person}" 相应的部份
