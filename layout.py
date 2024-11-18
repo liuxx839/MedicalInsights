@@ -82,7 +82,8 @@ def setup_sidebar(
         
         # 使用动态key创建文本框
         user_input = st.text_area("", placeholder="请输入内容.提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
-        
+        st.markdown("提示：您可以按下 **Ctrl + A** 全选内容，接着按下 **Ctrl + C** 复制")
+
         # 只保留清除按钮
         with stylable_container(
             "clear_button",
