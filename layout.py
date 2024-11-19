@@ -56,7 +56,7 @@ def readimg(user_image):
                     "content": message_content,
                 }
             ],
-            model='llama-3.2-11b-vision-preview',
+            model='llama-3.2-90b-vision-preview',
         )
         return chat_completion.choices[0].message.content
 
