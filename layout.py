@@ -13,7 +13,21 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
+def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=None):
+    """
+    Process a PIL Image and extract text using Groq's vision model.
+    
+    Args:
+        user_image (PIL.Image): Input image to process
+        model_choice (str): The model to use for processing
+        client (Groq): Groq client instance
+    
+    Returns:
+        str: Extracted text from the image
+    """
+    if client is None:
+        raise ValueError("Groq client must be provided")
+
     # Convert RGBA to RGB if necessary
     if user_image.mode in ('RGBA', 'LA'):
         background = Image.new('RGB', user_image.size, (255, 255, 255))
@@ -22,34 +36,39 @@ def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=clie
         else:
             background.paste(user_image, mask=user_image.split()[1])  # Use alpha channel as mask
         user_image = background
-    
-    # Convert PIL Image to bytes buffer
+
+    # Convert PIL Image to base64
     buffered = BytesIO()
     user_image.save(buffered, format="JPEG")
     base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-    
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "提取文字\n"
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
+
+    try:
+        # Create chat completion with the image
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Extract and provide all text visible in this image."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
                         }
-                    }
-                ]
-            }
-        ],
-        model=model_choice
-    )
+                    ]
+                }
+            ],
+            model=model_choice
+        )
+        
+        return chat_completion.choices[0].message.content
     
-    return chat_completion.choices[0].message.content
+    except Exception as e:
+        raise Exception(f"Error processing image with Groq API: {str(e)}")
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
