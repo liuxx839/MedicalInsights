@@ -83,7 +83,7 @@ def readimg(user_image):
               }
             ]
         )
-        return(response.choices[0].message)
+        return(response.choices[0].message.content)
 
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
