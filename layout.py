@@ -7,20 +7,43 @@ from config import json_to_dataframe, get_rewrite_system_message, colors, topics
 from streamlit_extras.stylable_container import stylable_container
 from groq import Groq
 import os
+import base64
+from io import BytesIO
 
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
 def readimg(user_image, model_choice='llama-3.2-90b-vision-preview', client=client):
+    # Convert PIL Image to base64 string
+    buffered = BytesIO()
+    user_image.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    
+    # Create the message content with the base64 image
+    content = [
+        {
+            "type": "text",
+            "text": "尽可能完整的提取图片里的文字"
+        },
+        {
+            "type": "image",
+            "image_url": {
+                "url": f"data:image/png;base64,{img_str}"
+            }
+        }
+    ]
+    
+    # Make the API call
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
-            {"role": "system", "content": '尽可能完整的提取图片里的文字'},
-            {"role": "user", "content": user_image}
+            {"role": "system", "content": content[0]['text']},
+            {"role": "user", "content": content}
         ],
         temperature=0.1,
         max_tokens=1200,
     )
+    
     summary = completion.choices[0].message.content
     return summary
 
