@@ -153,30 +153,38 @@ def setup_sidebar(
             user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
 
         with tab2:
+                    # 初始化 session state
+                    if "previous_file_name" not in st.session_state:
+                        st.session_state.previous_file_name = None
+                        
                     uploaded_file = st.file_uploader("上传图片", type=['png', 'jpg', 'jpeg'])
+                    
                     if uploaded_file is not None:
-                        # Store the uploaded file in session state to track changes
-                        file_bytes = uploaded_file.getvalue()
-                        if "current_image_bytes" not in st.session_state or st.session_state.current_image_bytes != file_bytes:
+                        current_file_name = uploaded_file.name
+                        
+                        # 只有当上传了新文件时才处理图片
+                        if (st.session_state.previous_file_name != current_file_name):
                             image = Image.open(uploaded_file)
                             st.image(image, caption="上传的图片", use_column_width=True)
                             
                             try:
-                                extracted_text = readimg(image)
-                                st.session_state.extracted_text = extracted_text
-                                st.session_state.current_image_bytes = file_bytes
-                                user_input = extracted_text
+                                with st.spinner('正在处理图片...'):
+                                    extracted_text = readimg(image)
+                                    st.session_state.extracted_text = extracted_text
+                                    st.session_state.previous_file_name = current_file_name
+                                    user_input = extracted_text
                             except Exception as e:
                                 st.error(f"图片处理出错: {str(e)}")
                                 user_input = ""
                         else:
-                            # Use cached results if the image hasn't changed
-                            user_input = st.session_state.extracted_text
+                            # 使用缓存的结果
                             st.image(Image.open(uploaded_file), caption="上传的图片", use_column_width=True)
+                            user_input = st.session_state.extracted_text
                         
+                        # 显示提取的文字
                         st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
-                
-                # Clear button handling
+        
+                # 清除按钮处理
                 with stylable_container(
                     "clear_button",
                     css_styles="""
@@ -187,8 +195,17 @@ def setup_sidebar(
                     }"""
                 ):
                     if st.button("🗑️一键清除"):
-                        # Clear all relevant session state variables
-                        for key in ['extracted_text', 'current_image_bytes', 'tags', 'disease_tags', 'rewrite_text', 'table_df', 'potential_issues']:
+                        # 清除所有相关的 session state 变量
+                        keys_to_clear = [
+                            'previous_file_name', 
+                            'extracted_text', 
+                            'tags', 
+                            'disease_tags', 
+                            'rewrite_text', 
+                            'table_df', 
+                            'potential_issues'
+                        ]
+                        for key in keys_to_clear:
                             if key in st.session_state:
                                 del st.session_state[key]
                         st.session_state.clear_clicked = True
