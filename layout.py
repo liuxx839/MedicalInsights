@@ -48,18 +48,7 @@ def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=clie
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Extract and provide all text visible in this image."
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        }
-                    ]
+                    "content": "Extract and provide all text visible in this image: data:image/jpeg;base64," + base64_image
                 }
             ],
             model=model_choice
