@@ -13,7 +13,7 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=None):
+def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
     """
     Process a PIL Image and extract text using Groq's vision model.
     
