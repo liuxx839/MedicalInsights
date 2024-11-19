@@ -54,7 +54,8 @@ def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=clie
         stop=None,
     )
     
-    print(completion.choices[0].message)
+    content = completion.choices[0].message.content
+    return(content)
 
 
 
