@@ -77,7 +77,7 @@ def readimg(user_image):
                   },
                   {
                     "type": "text",
-                    "text": "Please describe this image"
+                    "text": "提取图片里的文字"
                   }
                 ]
               }
