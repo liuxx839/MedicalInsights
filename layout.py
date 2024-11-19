@@ -15,44 +15,40 @@ client = Groq(api_key=api_key)
 
 def encode_image(image):
     """
-    Encode a PIL Image object to a Base64 string.
-    
-    Args:
-        image (PIL.Image): The image to encode.
-    
-    Returns:
-        str: Base64-encoded string of the image.
+    Encode a PIL Image object to a Base64 string with compression.
     """
+    # 压缩图片
+    max_size = (800, 800)  # 设置最大尺寸
+    image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    
+    # 转换为RGB模式（去除alpha通道）
+    if image.mode in ('RGBA', 'LA'):
+        background = Image.new('RGB', image.size, (255, 255, 255))
+        background.paste(image, mask=image.split()[-1])
+        image = background
+    
     buffered = BytesIO()
-    image.save(buffered, format="JPEG")
+    # 使用较低的质量来压缩
+    image.save(buffered, format="JPEG", quality=70, optimize=True)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def readimg(user_image):
     """
     Process a PIL Image and extract text using Groq's vision model.
-
-    Args:
-        user_image (PIL.Image): Input image to process.
-        model_choice (str): The model to use for processing.
-        client (Groq): Groq client instance.
-
-    Returns:
-        str: Extracted text from the image.
     """
     if client is None:
         raise ValueError("Groq client must be provided")
 
-    # Encode image to Base64
-    base64_image = encode_image(user_image)
-
-    # Create a string combining the question and the image in Base64 format
-    message_content = (
-        f"What's in this image? Here is the image data:\n"
-        f"data:image/jpeg;base64,{base64_image}"
-    )
-
     try:
-        # Send the request to the Groq API
+        # 复制图片对象以避免修改原始图片
+        image_to_process = user_image.copy()
+        base64_image = encode_image(image_to_process)
+        
+        message_content = (
+            f"What's in this image? Here is the image data:\n"
+            f"data:image/jpeg;base64,{base64_image}"
+        )
+
         chat_completion = client.chat.completions.create(
             messages=[
                 {
