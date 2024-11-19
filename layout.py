@@ -41,7 +41,7 @@ def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=clie
                     {
                         "type": "image_url",
                         "image_url": {
-                            "url": "https://upload.wikimedia.org/wikipedia/commons/f/f2/LPU-v1-die.jpg"
+                            "url": "https://www.biowars.com/wp-content/uploads/2023/03/how-to-draw-dog-torso.jpg"
                         }
                     }
                 ]
