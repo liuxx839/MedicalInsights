@@ -28,44 +28,34 @@ def encode_image(image):
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
-    """
-    Process a PIL Image and extract text using Groq's vision model.
-
-    Args:
-        user_image (PIL.Image): Input image to process.
-        model_choice (str): The model to use for processing.
-        client (Groq): Groq client instance.
-
-    Returns:
-        str: Extracted text from the image.
-    """
-    if client is None:
-        raise ValueError("Groq client must be provided")
-
-    # Encode image to Base64
-    base64_image = encode_image(user_image)
-
-    # Create a string combining the question and the image in Base64 format
-    message_content = (
-        f"What's in this image? Here is the image data:\n"
-        f"data:image/jpeg;base64,{base64_image}"
+    completion = client.chat.completions.create(
+        model="llama-3.2-11b-vision-preview",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "What's in this image?"
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": "https://upload.wikimedia.org/wikipedia/commons/f/f2/LPU-v1-die.jpg"
+                        }
+                    }
+                ]
+            }
+        ],
+        temperature=1,
+        max_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None,
     )
+    
+    print(completion.choices[0].message)
 
-    try:
-        # Send the request to the Groq API
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": message_content,
-                }
-            ],
-            model=model_choice,
-        )
-        return chat_completion.choices[0].message.content
-
-    except Exception as e:
-        raise Exception(f"Error processing image with Groq API: {str(e)}")
 
 
 def setup_layout(
