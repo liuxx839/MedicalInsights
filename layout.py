@@ -27,7 +27,7 @@ def encode_image(image):
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
-def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=None):
+def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
     """
     Process a PIL Image and extract text using Groq's vision model.
     
