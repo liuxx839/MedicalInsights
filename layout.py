@@ -13,8 +13,8 @@ from io import BytesIO
 
 # api_key = os.environ.get("GROQ_API_KEY")
 # client = Groq(api_key=api_key)
-api_key = os.environ.get("ZHIPU_API_KEY")
-client = ZhipuAI(api_key=api_key)
+api_key_vision = os.environ.get("ZHIPU_API_KEY")
+client_vision = ZhipuAI(api_key=api_key_vision)
 
 def encode_image(image):
     """
@@ -63,7 +63,7 @@ def readimg(user_image):
         image_to_process = user_image.copy()
         base64_image = encode_image(image_to_process)
         
-        response = client.chat.completions.create(
+        response = client_vision.chat.completions.create(
             model="glm-4v-plus",  # Fill in the model name to be called
             messages=[
               {
