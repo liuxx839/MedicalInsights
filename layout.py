@@ -69,14 +69,24 @@ def readimg(user_image):
         )
 
         chat_completion = client.chat.completions.create(
+           model="glm-4v-plus",  # Fill in the model name to be called
             messages=[
-                {
-                    "role": "user",
-                    "content": message_content,
-                }
-            ],
-            model='glm-4v-plus',
-        )
+            {
+            "role": "user",
+            "content": [
+            {
+            "type": "image_url",
+            "image_url": {
+                "url": base64_image
+            }
+            },
+            {
+            "type": "text",
+            "text": "Please describe this image"
+            }
+            ]
+            }
+            ]
         return chat_completion.choices[0].message
 
     except Exception as e:
