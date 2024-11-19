@@ -14,6 +14,15 @@ api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
 def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
+    # Convert RGBA to RGB if necessary
+    if user_image.mode in ('RGBA', 'LA'):
+        background = Image.new('RGB', user_image.size, (255, 255, 255))
+        if user_image.mode == 'RGBA':
+            background.paste(user_image, mask=user_image.split()[3])  # Use alpha channel as mask
+        else:
+            background.paste(user_image, mask=user_image.split()[1])  # Use alpha channel as mask
+        user_image = background
+    
     # Convert PIL Image to bytes buffer
     buffered = BytesIO()
     user_image.save(buffered, format="JPEG")
