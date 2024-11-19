@@ -22,13 +22,13 @@ def setup_client():
     if model_choice in ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"]:
         api_key = os.environ.get("GROQ_API_KEY")
         client = Groq(api_key=api_key)
-    elif model_choice == "glm-4-airx":
-        api_key = os.environ.get("ZHIPU_API_KEY")
-        client = ZhipuAI(api_key=api_key)
-    elif model_choice in ["hunyuan-lite", "hunyuan-pro"]:
-        api_id = os.environ.get("TENCENT_SECRET_ID")
-        api_key = os.environ.get("TENCENT_SECRET_KEY")
-        client = Hunyuan(api_id=api_id, api_key=api_key)
+    # elif model_choice == "glm-4-airx":
+    #     api_key = os.environ.get("ZHIPU_API_KEY")
+    #     client = ZhipuAI(api_key=api_key)
+    # elif model_choice in ["hunyuan-lite", "hunyuan-pro"]:
+    #     api_id = os.environ.get("TENCENT_SECRET_ID")
+    #     api_key = os.environ.get("TENCENT_SECRET_KEY")
+    #     client = Hunyuan(api_id=api_id, api_key=api_key)
     return model_choice, client
 
 def generate_tag(text, model_choice, client):
