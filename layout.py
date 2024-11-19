@@ -55,7 +55,7 @@ def readimg(user_image):
     """
     Process a PIL Image and extract text using Groq's vision model.
     """
-    if client is None:
+    if client_vision is None:
         raise ValueError("Groq client must be provided")
 
     try:
