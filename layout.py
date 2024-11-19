@@ -28,31 +28,7 @@ def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=clie
     if client is None:
         raise ValueError("Groq client must be provided")
 
-    # Convert RGBA to RGB if necessary
-    if user_image.mode in ('RGBA', 'LA'):
-        background = Image.new('RGB', user_image.size, (255, 255, 255))
-        if user_image.mode == 'RGBA':
-            background.paste(user_image, mask=user_image.split()[3])  # Use alpha channel as mask
-        else:
-            background.paste(user_image, mask=user_image.split()[1])  # Use alpha channel as mask
-        user_image = background
-
-    # Convert PIL Image to base64
-    buffered = BytesIO()
-    user_image.save(buffered, format="JPEG")
-    base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-
-    try:
-        # Create chat completion with the image
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": "Extract and provide all text visible in this image: data:image/jpeg;base64," + base64_image
-                }
-            ],
-            model=model_choice
-        )
+   
         
         return chat_completion.choices[0].message.content
     
