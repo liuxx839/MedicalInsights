@@ -6,6 +6,7 @@ from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
 from groq import Groq
+from zhipuai import ZhipuAI
 import os
 import base64
 from io import BytesIO
