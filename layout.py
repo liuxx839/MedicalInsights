@@ -45,7 +45,7 @@ def readimg(user_image):
         base64_image = encode_image(image_to_process)
         
         message_content = (
-            f"What's in this image? Here is the image data:\n"
+            f"提取图片里的文字信息，只返回文字信息即可，如果没有的话，提示用户不存在可识别文字:\n"
             f"data:image/jpeg;base64,{base64_image}"
         )
 
