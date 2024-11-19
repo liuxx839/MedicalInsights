@@ -13,28 +13,40 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-def encode_image(image_path):
-    max_size = (800, 800)  # 设置图像最大尺寸
+def encode_image(image):
+    """
+    Encode a PIL Image object to a Base64 string with compression and ensure it is under 4MB.
+    """
+    max_size = (800, 800)  # 设置最大尺寸
     max_file_size = 4 * 1024 * 1024  # 4MB 文件大小限制
     
-    with Image.open(image_path) as image:
-        # 压缩图像尺寸
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    # 压缩图片
+    image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    
+    # 转换为RGB模式（去除alpha通道）
+    if image.mode in ('RGBA', 'LA'):
+        background = Image.new('RGB', image.size, (255, 255, 255))
+        background.paste(image, mask=image.split()[-1])
+        image = background
+    
+    # 尝试降低质量，直到图像文件大小小于 4MB
+    quality = 95  # 初始质量为95
+    buffered = BytesIO()
+    
+    # 反复压缩直到文件大小小于4MB
+    while True:
+        buffered.seek(0)
+        image.save(buffered, format="JPEG", quality=quality, optimize=True)
         
-        # 尝试降低质量，直到图像文件大小小于 4MB
-        quality = 95  # 初始质量为95
-        buffered = io.BytesIO()
+        # 如果文件大小小于4MB，跳出循环
+        if len(buffered.getvalue()) <= max_file_size:
+            break
         
-        # 反复压缩直到文件大小小于4MB
-        while True:
-            buffered.seek(0)
-            image.save(buffered, format="JPEG", quality=quality, optimize=True)
-            if len(buffered.getvalue()) <= max_file_size:
-                break
-            quality -= 5  # 每次降低5%质量
-        
-        # 返回Base64编码
-        return base64.b64encode(buffered.getvalue()).decode('utf-8')
+        # 每次降低5%的质量
+        quality -= 5
+    
+    # 返回Base64编码
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def readimg(user_image):
     """
