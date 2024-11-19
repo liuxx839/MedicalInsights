@@ -5,12 +5,17 @@ from PIL import Image
 from utils import match_color, determine_issue_severity, create_json_data
 from config import json_to_dataframe, get_rewrite_system_message, colors, topics, primary_topics_list
 from streamlit_extras.stylable_container import stylable_container
+from groq import Groq
+import os
 
-def readimg(user_image, model_choice='llama-3.2-90b-vision-preview', client=None):
+api_key = os.environ.get("GROQ_API_KEY")
+client = Groq(api_key=api_key)
+
+def readimg(user_image, model_choice='llama-3.2-90b-vision-preview', client=client):
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
-            {"role": "system", "content": '提取图片里的文字'},
+            {"role": "system", "content": '尽可能完整的提取图片里的文字'},
             {"role": "user", "content": user_image}
         ],
         temperature=0.1,
