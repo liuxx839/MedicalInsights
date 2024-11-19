@@ -29,7 +29,7 @@ def encode_image(image):
     
     buffered = BytesIO()
     # 使用较低的质量来压缩
-    image.save(buffered, format="JPEG", quality=70, optimize=True)
+    image.save(buffered, format="JPEG", quality=50, optimize=True)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def readimg(user_image):
