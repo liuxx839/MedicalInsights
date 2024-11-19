@@ -13,17 +13,28 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-# Function to encode the image
-def encode_image(image_path):
-  with open(image_path, "rb") as image_file:
-    return base64.b64encode(image_file.read()).decode('utf-8')
-
-def readimg(uploaded_file):
+def encode_image(image):
     """
-    Process a user-uploaded image file and extract text using Groq's vision model.
+    Encode a PIL Image object to a Base64 string.
+    
+    Args:
+        image (PIL.Image): The image to encode.
+    
+    Returns:
+        str: Base64-encoded string of the image.
+    """
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
+    """
+    Process a PIL Image and extract text using Groq's vision model.
 
     Args:
-        uploaded_file (BytesIO): Uploaded image file.
+        user_image (PIL.Image): Input image to process.
+        model_choice (str): The model to use for processing.
+        client (Groq): Groq client instance.
 
     Returns:
         str: Extracted text from the image.
@@ -31,12 +42,10 @@ def readimg(uploaded_file):
     if client is None:
         raise ValueError("Groq client must be provided")
 
-    # Load image from BytesIO
-    image = Image.open(uploaded_file)
     # Encode image to Base64
-    base64_image = encode_image(uploaded_file)
+    base64_image = encode_image(user_image)
 
-    # Prepare API request message
+    # Create a string combining the question and the image in Base64 format
     message_content = (
         f"What's in this image? Here is the image data:\n"
         f"data:image/jpeg;base64,{base64_image}"
@@ -48,18 +57,10 @@ def readimg(uploaded_file):
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "text", "text": "What's in this image?"},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}",
-                            },
-                        },
-                    ],
+                    "content": message_content,
                 }
             ],
-            model="llama-3.2-11b-vision-preview",
+            model=model_choice,
         )
         return chat_completion.choices[0].message.content
 
@@ -126,21 +127,25 @@ def setup_sidebar(
         # 添加选项卡用于文字输入和图片上传
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
-        user_input = ""
         with tab1:
-            user_input = st.text_area("请输入文字", placeholder="请输入内容", height=200)
+            # 使用动态key创建文本框
+            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
         
         with tab2:
             uploaded_file = st.file_uploader("上传图片", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
+                # 显示上传的图片
+                image = Image.open(uploaded_file)
+                st.image(image, caption="上传的图片", use_column_width=True)
+                
+                # 处理图片并提取文字
                 try:
-                    # 使用 readimg 处理上传的文件
-                    extracted_text = readimg(uploaded_file)
-                    st.image(Image.open(uploaded_file), caption="上传的图片", use_column_width=True)
-                    st.text_area("提取的文字", extracted_text, height=200)
+                    extracted_text = readimg(image, model_choice, client)
                     user_input = extracted_text
+                    st.text_area("提取的文字", extracted_text, height=200, key="extracted_text")
                 except Exception as e:
                     st.error(f"图片处理出错: {str(e)}")
+                    user_input = ""
 
         # 只保留清除按钮
         with stylable_container(
