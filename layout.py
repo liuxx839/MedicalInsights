@@ -18,14 +18,12 @@ def encode_image(image_path):
   with open(image_path, "rb") as image_file:
     return base64.b64encode(image_file.read()).decode('utf-8')
 
-def readimg(user_image):
+def readimg(uploaded_file):
     """
-    Process a PIL Image and extract text using Groq's vision model.
+    Process a user-uploaded image file and extract text using Groq's vision model.
 
     Args:
-        user_image (PIL.Image): Input image to process.
-        model_choice (str): The model to use for processing.
-        client (Groq): Groq client instance.
+        uploaded_file (BytesIO): Uploaded image file.
 
     Returns:
         str: Extracted text from the image.
@@ -33,10 +31,12 @@ def readimg(user_image):
     if client is None:
         raise ValueError("Groq client must be provided")
 
+    # Load image from BytesIO
+    image = Image.open(uploaded_file)
     # Encode image to Base64
-    base64_image = encode_image(user_image)
+    base64_image = encode_image(uploaded_file)
 
-    # Create a string combining the question and the image in Base64 format
+    # Prepare API request message
     message_content = (
         f"What's in this image? Here is the image data:\n"
         f"data:image/jpeg;base64,{base64_image}"
@@ -126,25 +126,21 @@ def setup_sidebar(
         # 添加选项卡用于文字输入和图片上传
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
+        user_input = ""
         with tab1:
-            # 使用动态key创建文本框
-            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
+            user_input = st.text_area("请输入文字", placeholder="请输入内容", height=200)
         
         with tab2:
             uploaded_file = st.file_uploader("上传图片", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
-                # 显示上传的图片
-                image = Image.open(uploaded_file)
-                st.image(image, caption="上传的图片", use_column_width=True)
-                
-                # 处理图片并提取文字
                 try:
-                    extracted_text = readimg(image)
+                    # 使用 readimg 处理上传的文件
+                    extracted_text = readimg(uploaded_file)
+                    st.image(Image.open(uploaded_file), caption="上传的图片", use_column_width=True)
+                    st.text_area("提取的文字", extracted_text, height=200)
                     user_input = extracted_text
-                    st.text_area("提取的文字", extracted_text, height=200, key="extracted_text")
                 except Exception as e:
                     st.error(f"图片处理出错: {str(e)}")
-                    user_input = ""
 
         # 只保留清除按钮
         with stylable_container(
