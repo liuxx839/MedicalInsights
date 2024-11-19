@@ -61,7 +61,8 @@ def readimg(user_image):
             ],
             model="llama-3.2-11b-vision-preview",
         )
-      return(chat_completion.choices[0].message.content)
+        return chat_completion.choices[0].message.content
+
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
 
