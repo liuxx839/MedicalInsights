@@ -63,31 +63,27 @@ def readimg(user_image):
         image_to_process = user_image.copy()
         base64_image = encode_image(image_to_process)
         
-        message_content = (
-            f"提取图片里的文字信息，只返回文字信息即可，如果没有的话，提示用户不存在可识别文字:\n"
-            f"data:image/jpeg;base64,{base64_image}"
-        )
-
-        chat_completion = client.chat.completions.create(
-           model="glm-4v-plus",  # Fill in the model name to be called
+        response = client.chat.completions.create(
+            model="glm-4v-plus",  # Fill in the model name to be called
             messages=[
-            {
-            "role": "user",
-            "content": [
-            {
-            "type": "image_url",
-            "image_url": {
-                "url": base64_image
-            }
-            },
-            {
-            "type": "text",
-            "text": "Please describe this image"
-            }
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": base64_image
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": "Please describe this image"
+                  }
+                ]
+              }
             ]
-            }
-            ]
-        return chat_completion.choices[0].message
+        )
+        return(response.choices[0].message)
 
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
