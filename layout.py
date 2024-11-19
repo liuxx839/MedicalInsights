@@ -13,17 +13,13 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-def readimg(user_image, model_choice='llama-3.2-13b-vision-preview', client=client):
-    # Convert PIL Image to base64 string
+def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
+    # Convert PIL Image to bytes buffer
     buffered = BytesIO()
-    user_image.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
+    user_image.save(buffered, format="JPEG")
+    base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
     
-    # Format the base64 image as a data URL
-    image_url = f"data:image/png;base64,{img_str}"
-    
-    completion = client.chat.completions.create(
-        model=model_choice,
+    chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "user",
@@ -35,21 +31,16 @@ def readimg(user_image, model_choice='llama-3.2-13b-vision-preview', client=clie
                     {
                         "type": "image_url",
                         "image_url": {
-                            "url": image_url
+                            "url": f"data:image/jpeg;base64,{base64_image}"
                         }
                     }
                 ]
-            },
+            }
         ],
-        temperature=1,
-        max_tokens=1024,
-        top_p=1,
-        stream=False,
-        stop=None
+        model=model_choice
     )
     
-    summary = completion.choices[0].message.content
-    return summary
+    return chat_completion.choices[0].message.content
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
