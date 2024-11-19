@@ -19,27 +19,34 @@ def readimg(user_image, model_choice='llama-3.2-90b-vision-preview', client=clie
     user_image.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
     
-    # Create the message content with the base64 image
-    content = [
+    # Format the base64 image as a data URL
+    image_url = f"data:image/png;base64,{img_str}"
+    
+    # Create messages with the correct format for Groq API
+    messages = [
         {
-            "type": "text",
-            "text": "尽可能完整的提取图片里的文字"
+            "role": "system",
+            "content": "尽可能完整的提取图片里的文字"
         },
         {
-            "type": "image",
-            "image_url": {
-                "url": f"data:image/png;base64,{img_str}"
-            }
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Please extract all text from this image."
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": image_url}
+                }
+            ]
         }
     ]
     
     # Make the API call
     completion = client.chat.completions.create(
         model=model_choice,
-        messages=[
-            {"role": "system", "content": content[0]['text']},
-            {"role": "user", "content": content}
-        ],
+        messages=messages,
         temperature=0.1,
         max_tokens=1200,
     )
