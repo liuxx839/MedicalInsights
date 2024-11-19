@@ -13,19 +13,10 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-def encode_image(image):
-    """
-    Encode a PIL Image object to a Base64 string.
-    
-    Args:
-        image (PIL.Image): The image to encode.
-    
-    Returns:
-        str: Base64-encoded string of the image.
-    """
-    buffered = BytesIO()
-    image.save(buffered, format="JPEG")
-    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+# Function to encode the image
+def encode_image(image_path):
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode('utf-8')
 
 def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
     """
