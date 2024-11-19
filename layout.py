@@ -75,7 +75,7 @@ def readimg(user_image):
                     "content": message_content,
                 }
             ],
-            model='model="glm-4v-plus',
+            model='glm-4v-plus',
         )
         return chat_completion.choices[0].message.content
 
