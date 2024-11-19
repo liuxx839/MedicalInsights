@@ -77,7 +77,7 @@ def readimg(user_image):
             ],
             model='glm-4v-plus',
         )
-        return chat_completion.choices[0].message.content
+        return chat_completion.choices[0].message
 
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
