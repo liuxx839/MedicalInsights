@@ -10,8 +10,10 @@ import os
 import base64
 from io import BytesIO
 
-api_key = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=api_key)
+# api_key = os.environ.get("GROQ_API_KEY")
+# client = Groq(api_key=api_key)
+api_key = os.environ.get("ZHIPU_API_KEY")
+client = ZhipuAI(api_key=api_key)
 
 def encode_image(image):
     """
@@ -72,7 +74,7 @@ def readimg(user_image):
                     "content": message_content,
                 }
             ],
-            model='llama-3.2-90b-vision-preview',
+            model='model="glm-4v-plus',
         )
         return chat_completion.choices[0].message.content
 
