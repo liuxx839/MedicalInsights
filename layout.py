@@ -13,7 +13,7 @@ from io import BytesIO
 api_key = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-def readimg(user_image, model_choice='llama-3.2-90b-vision-preview', client=client):
+def readimg(user_image, model_choice='llama-3.2-13b-vision-preview', client=client):
     # Convert PIL Image to base64 string
     buffered = BytesIO()
     user_image.save(buffered, format="PNG")
@@ -22,33 +22,30 @@ def readimg(user_image, model_choice='llama-3.2-90b-vision-preview', client=clie
     # Format the base64 image as a data URL
     image_url = f"data:image/png;base64,{img_str}"
     
-    # Create messages with the correct format for Groq API
-    messages = [
-        {
-            "role": "system",
-            "content": "尽可能完整的提取图片里的文字"
-        },
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "Please extract all text from this image."
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": image_url}
-                }
-            ]
-        }
-    ]
-    
-    # Make the API call
     completion = client.chat.completions.create(
         model=model_choice,
-        messages=messages,
-        temperature=0.1,
-        max_tokens=1200,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "提取文字\n"
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url
+                        }
+                    }
+                ]
+            },
+        ],
+        temperature=1,
+        max_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None
     )
     
     summary = completion.choices[0].message.content
