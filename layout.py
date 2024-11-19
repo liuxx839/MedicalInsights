@@ -27,7 +27,7 @@ def encode_image(image):
     image.save(buffered, format="JPEG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
-def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=client):
+def readimg(user_image):
     """
     Process a PIL Image and extract text using Groq's vision model.
 
@@ -60,7 +60,7 @@ def readimg(user_image, model_choice='llama-3.2-11b-vision-preview', client=clie
                     "content": message_content,
                 }
             ],
-            model=model_choice,
+            model='llama-3.2-11b-vision-preview',
         )
         return chat_completion.choices[0].message.content
 
@@ -140,7 +140,7 @@ def setup_sidebar(
                 
                 # 处理图片并提取文字
                 try:
-                    extracted_text = readimg(image, model_choice, client)
+                    extracted_text = readimg(image)
                     user_input = extracted_text
                     st.text_area("提取的文字", extracted_text, height=200, key="extracted_text")
                 except Exception as e:
