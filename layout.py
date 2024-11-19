@@ -155,18 +155,24 @@ def setup_sidebar(
         with tab2:
             uploaded_file = st.file_uploader("上传图片", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
-                # 显示上传的图片
-                image = Image.open(uploaded_file)
-                st.image(image, caption="上传的图片", use_column_width=True)
-                
-                # 处理图片并提取文字
-                try:
-                    extracted_text = readimg(image)
-                    user_input = extracted_text
-                    st.text_area("提取的文字", extracted_text, height=200, key="extracted_text")
-                except Exception as e:
-                    st.error(f"图片处理出错: {str(e)}")
-                    user_input = ""
+                # 将提取的文字存储在session state中
+                if "extracted_text" not in st.session_state:
+                    image = Image.open(uploaded_file)
+                    st.image(image, caption="上传的图片", use_column_width=True)
+                    
+                    try:
+                        extracted_text = readimg(image)
+                        st.session_state.extracted_text = extracted_text
+                        user_input = extracted_text
+                    except Exception as e:
+                        st.error(f"图片处理出错: {str(e)}")
+                        user_input = ""
+                else:
+                    # 如果已经提取过文字，
+                    user_input = st.session_state.get("extracted_text", "")
+                    st.image(Image.open(uploaded_file), caption="上传的图片", use_column_width=True)
+                    
+                st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
 
         # 只保留清除按钮
         with stylable_container(
