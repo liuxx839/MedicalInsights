@@ -293,7 +293,7 @@ def display_rewrite_results():
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
     else:
-        user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'\nTip: You can press Ctrl + A to select all the content, then press Ctrl + C to copy it\n\nIf the result is not satisfactory, the 'Rewrite' button can be clicked again for a new attempt", height=300)
+        user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'\nTip: You can press Ctrl + A to select all the content, then press Ctrl + C to copy it\n\nContent quality may vary\nIf the result is not satisfactory, the 'Rewrite' button can be clicked again for a new attempt", height=300)
 
     with stylable_container(
         "copy_button",
