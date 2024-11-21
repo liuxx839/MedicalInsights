@@ -21,7 +21,7 @@ def encode_image(image):
     Encode a PIL Image object to a Base64 string with compression and ensure it is under 4MB.
     """
     max_size = (800, 800)  # 设置最大尺寸
-    max_file_size = 4 * 1024 * 1024  # 4MB 文件大小限制
+    max_file_size = 4/100 * 1024 * 1024  # 4MB 文件大小限制
     
     # 压缩图片
     image.thumbnail(max_size, Image.Resampling.LANCZOS)
