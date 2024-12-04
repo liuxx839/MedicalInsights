@@ -86,7 +86,7 @@ generate_diseases_system_message = '''
 
 def get_rewrite_system_message(institution, department, person):
     return f'''
-你的职责是改写文本，要丰富内容，但要基于事实, 你的风格是喜欢用口语话回答
+你的职责是改写文本，要丰富内容，但要基于事实, 你的风格是喜欢用文言文回答
 改写建议：根据综合判断和评估反馈对原文本进行改写，尽量保留原文本表达和意思，并对原文本中的未脱敏信息进行脱敏处理。改写后文本不少于100字
 严格遵循下面的规范文本样式：
 一名{institution}的{department}的{person}提出{{观点}},{{内容间的逻辑关系}},{{进一步的方案}}
