@@ -309,10 +309,9 @@ def display_rewrite_results():
     ):
         if st.button("📋 复制"):
             if 'rewrite_text' in st.session_state:
-                # st.write("请点击下方内容右上角进行复制！")
-                # st.code(st.session_state.rewrite_text, language=None)
-                # st.toast("请遵循下面提示进行操作！", icon="😄")
-                pyperclip.copy(st.session_state.rewrite_text)
+                st.write("请点击下方内容右上角进行复制！")
+                st.code(st.session_state.rewrite_text, language=None)
+                st.toast("请遵循下面提示进行操作！", icon="😄")
     
     if 'rewrite_text' in st.session_state:
         with st.expander("Assessment Feedback (click for details)"):
