@@ -299,7 +299,17 @@ def display_rewrite_results():
     ):
         if st.button("📋 复制"):
             if 'rewrite_text' in st.session_state:
-                pyperclip.copy(st.session_state.rewrite_text)
+                js_code = f"""
+                    navigator.clipboard.writeText('{st.session_state.rewrite_text}');
+                    """
+                st.components.v1.html(
+                    f"""
+                    <script>
+                    {js_code}
+                    </script>
+                    """,
+                    height=0,
+                )
                 st.success("文本已复制到剪贴板!")
     
     if 'rewrite_text' in st.session_state:
