@@ -16,14 +16,14 @@ from config import (
 
 def setup_client():
     # model_choice = "llama3-70b-8192"  # 默认模型，你可以根据需要修改
-    # model_choice = "llama-3.3-70b-versatile"
+    model_choice = "llama-3.3-70b-versatile"
     # model_choice = "llama-3.1-70b-versatile"  # 默认模型，你可以根据需要修改
     # model_choice = "hunyuan-pro" 
-    model_choice = "glm-4-flash" 
+    # model_choice = "glm-4-airx" 
     if model_choice in ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama-3.1-8b-instant","llama-3.3-70b-versatile"]:
         api_key = os.environ.get("GROQ_API_KEY")
         client = Groq(api_key=api_key)
-    elif model_choice == "glm-4-flash":
+    elif model_choice == "glm-4-airx":
         api_key = os.environ.get("ZHIPU_API_KEY")
         client = ZhipuAI(api_key=api_key)
     elif model_choice in ["hunyuan-lite", "hunyuan-pro"]:
