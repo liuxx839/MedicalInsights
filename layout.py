@@ -10,8 +10,6 @@ from zhipuai import ZhipuAI
 import os
 import base64
 from io import BytesIO
-import pyperclip
-
 
 # api_key = os.environ.get("GROQ_API_KEY")
 # client = Groq(api_key=api_key)
@@ -187,21 +185,31 @@ def setup_sidebar(
                 st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
 
         # 清除按钮处理
-        if st.button("🗑️一键清除"):
-            # 清除所有相关的 session state 变量
-            keys_to_clear = [
-                'previous_file_name', 
-                'extracted_text', 
-                'tags', 
-                'disease_tags', 
-                'rewrite_text', 
-                'table_df', 
-                'potential_issues'
-            ]
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
+        with stylable_container(
+            "clear_button",
+            css_styles="""
+            button {
+                background-color: white;
+                color: #7A00E6;
+                border: 1px solid #7A00E6;
+            }"""
+        ):
+            if st.button("🗑️一键清除"):
+                # 清除所有相关的 session state 变量
+                keys_to_clear = [
+                    'previous_file_name', 
+                    'extracted_text', 
+                    'tags', 
+                    'disease_tags', 
+                    'rewrite_text', 
+                    'table_df', 
+                    'potential_issues'
+                ]
+                for key in keys_to_clear:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.session_state.clear_clicked = True
+                st.rerun()
         
         st.markdown("<p style='font-size: 14px; font-weight: bold;'>Step 2: 请根据拜访选择如下信息用于Rewrite🧑‍⚕️</p>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
@@ -299,18 +307,9 @@ def display_rewrite_results():
     ):
         if st.button("📋 复制"):
             if 'rewrite_text' in st.session_state:
-                js_code = f"""
-                    navigator.clipboard.writeText('{st.session_state.rewrite_text}');
-                    """
-                st.components.v1.html(
-                    f"""
-                    <script>
-                    {js_code}
-                    </script>
-                    """,
-                    height=0,
-                )
-                st.success("文本已复制到剪贴板!")
+                st.write("请点击下方内容右上角进行复制！")
+                st.code(st.session_state.rewrite_text, language=None)
+                st.toast("请遵循下面提示进行操作！", icon="😄")
     
     if 'rewrite_text' in st.session_state:
         with st.expander("Assessment Feedback (click for details)"):
