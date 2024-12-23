@@ -107,7 +107,7 @@ the info  should cover the 4W elements (Who(Title,Affiliation,department), What,
 just return: 
 * if any missing in the required fields, pay extra attention to Who part, pay extra attention to Why part,  pay extra attention to Way Forward part.
 * if private info meets Anonymization. 
-* if re-write is needed
+* if modification is needed
 You need to add appropriate emojis in your response, and the reply should be in Chinese. 
 
 '''
