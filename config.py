@@ -92,7 +92,6 @@ def get_rewrite_system_message(institution, department, person):
 一名{institution}的{department}的{person}提出{{观点}},{{内容间的逻辑关系}},{{进一步的方案}}
 
 执行逻辑：
-0. 现在是2024年底，马上要新年和圣诞了，请首先恭祝节日快乐
 1.如果判断原始文本缺失太多内容，请礼貌提醒，无需执行下面的任何步骤或者逻辑
 2. 否则： "一名{institution}的{department}的{person}提出"， 不需要修改
 3。 原文如果存在的机构和人物，需要脱敏, 替换为"一名{institution}的{person}" 相应的部份
@@ -101,6 +100,7 @@ def get_rewrite_system_message(institution, department, person):
 6.根据改写的内容，请在结尾添加不多于5个的简短关键词会
 7.在最后提出一些可扩展内容的问题
 8.请用汉语和英语分别执行上面任务
+9.在最后适当添加圣诞和新年的表情
 '''
 
 prob_identy_system_message = '''
