@@ -100,7 +100,6 @@ def get_rewrite_system_message(institution, department, person):
 6.根据改写的内容，请在结尾添加不多于5个的简短关键词会
 7.在最后提出一些可扩展内容的问题
 8.请用汉语和英语分别执行上面任务
-9.在最后适当添加圣诞和新年的表情
 '''
 
 prob_identy_system_message = '''
