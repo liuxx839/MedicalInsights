@@ -386,9 +386,147 @@ Follow above template, direct output json format in above format, no explanation
 #     df = pd.DataFrame(flat_data)
 
 #     return df
-def json_to_dataframe(json_data):
+
+
+# def json_to_dataframe(json_data):
+#     """
+#     将复杂的JSON数据转换为DataFrame格式。
+#     支持嵌套的字典、列表，将多条数据分别放入不同行。
+    
+#     Args:
+#         json_data: JSON字符串或字典对象
+        
+#     Returns:
+#         pd.DataFrame: 展平后的数据框，对于多记录数据总是返回多行
+#     """
+#     def extract_list_length(data):
+#         """递归查找最长列表的长度"""
+#         if isinstance(data, dict):
+#             return max([extract_list_length(v) for v in data.values()], default=1)
+#         elif isinstance(data, list):
+#             if not data:
+#                 return 1
+#             # 移除对基本类型列表的特殊处理
+#             return len(data)
+#         return 1
+
+#     def flatten_json(data, prefix='', row_index=0, max_rows=1):
+#         items = defaultdict(list)
+        
+#         # 处理基本类型
+#         if isinstance(data, (str, int, float, bool)) or data is None:
+#             items[prefix] = [data] * max_rows if prefix else []
+#             return items
+            
+#         # 处理列表
+#         elif isinstance(data, list):
+#             if not data:
+#                 items[prefix] = [None] * max_rows if prefix else []
+#                 return items
+            
+#             # 统一处理所有类型的列表
+#             if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
+#                 # 基本类型列表也展开成多行
+#                 if prefix:
+#                     items[prefix] = []
+#                     for item in data:
+#                         items[prefix].append(item)
+#                     # 如果当前列表长度小于最大行数，用None填充
+#                     if len(items[prefix]) < max_rows:
+#                         items[prefix].extend([None] * (max_rows - len(items[prefix])))
+#                 return items
+            
+#             # 处理包含复杂类型的列表
+#             for i, item in enumerate(data):
+#                 if isinstance(item, dict):
+#                     temp = flatten_json(item, prefix, i, len(data))
+#                     for k, v in temp.items():
+#                         if not items[k]:
+#                             items[k] = [None] * max_rows
+#                         items[k][i] = v[0] if v else None
+#                 else:
+#                     if prefix:
+#                         if not items[prefix]:
+#                             items[prefix] = [None] * max_rows
+#                         items[prefix][i] = item
+            
+#             return items
+            
+#         # 处理字典
+#         elif isinstance(data, dict):
+#             max_list_length = extract_list_length(data)
+            
+#             for key, value in data.items():
+#                 new_key = f"{prefix}/{key}" if prefix else key
+                
+#                 # 递归处理值
+#                 temp = flatten_json(value, new_key, row_index, max_list_length)
+#                 for k, v in temp.items():
+#                     if not items[k]:
+#                         items[k] = [None] * max_rows
+#                     if isinstance(v, list):
+#                         if len(v) == max_rows:
+#                             items[k] = v
+#                         else:
+#                             # 确保列表值正确对齐到行
+#                             items[k][:len(v)] = v
+#                             if len(v) < max_rows:
+#                                 items[k][len(v):] = [None] * (max_rows - len(v))
+#                     else:
+#                         items[k] = [v] * max_rows
+            
+#             return items
+            
+#         return items
+
+#     # 转换输入数据
+#     if isinstance(json_data, str):
+#         try:
+#             data = json.loads(json_data)
+#         except json.JSONDecodeError as e:
+#             raise ValueError(f"Invalid JSON string: {str(e)}")
+#     else:
+#         data = json_data
+
+#     # 如果输入是列表，确保作为多行处理
+#     if isinstance(data, list):
+#         if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
+#             # 基本类型列表转换为单列多行DataFrame
+#             return pd.DataFrame({"value": data})
+        
+#     # 计算需要的总行数
+#     max_rows = extract_list_length(data)
+    
+#     # 展平JSON结构
+#     flat_data = flatten_json(data, max_rows=max_rows)
+    
+#     # 如果没有数据，返回空DataFrame
+#     if not flat_data:
+#         return pd.DataFrame()
+
+#     # 创建DataFrame
+#     df = pd.DataFrame(flat_data)
+    
+#     # 清理列名，移除开头的/
+#     df.columns = [col[1:] if col.startswith('/') else col for col in df.columns]
+    
+#     # 删除全为空值的行
+#     df = df.dropna(how='all')
+    
+#     return df
+
+
+import json
+import pandas as pd
+from collections import defaultdict
+import re
+from json_repair import repair_json
+import logging
+import ast
+
+def enhanced_json_to_dataframe(json_data):
     """
-    将复杂的JSON数据转换为DataFrame格式。
+    将复杂的JSON数据转换为DataFrame格式，支持修复损坏的JSON。
     支持嵌套的字典、列表，将多条数据分别放入不同行。
     
     Args:
@@ -397,6 +535,55 @@ def json_to_dataframe(json_data):
     Returns:
         pd.DataFrame: 展平后的数据框，对于多记录数据总是返回多行
     """
+    def try_repair_json(input_data):
+        """尝试修复损坏的JSON数据"""
+        if isinstance(input_data, (dict, list)):
+            return input_data
+            
+        # 清理JSON字符串
+        input_str = str(input_data).strip()
+        
+        # 移除JSON Markdown标记
+        if input_str.startswith("```"):
+            input_str = input_str[len("```"):]
+        if input_str.startswith("```json"):
+            input_str = input_str[len("```json"):]
+        if input_str.endswith("```"):
+            input_str = input_str[:-len("```")]
+            
+        # 基本清理
+        input_str = (
+            input_str.replace("{{", "{")
+            .replace("}}", "}")
+            .replace('"[{', "[{")
+            .replace('}]"', "}]")
+            .replace("\\", " ")
+            .replace("\\n", " ")
+            .replace("\n", " ")
+            .replace("\r", "")
+            .strip()
+        )
+        
+        try:
+            # 首先尝试直接解析
+            return json.loads(input_str)
+        except json.JSONDecodeError:
+            try:
+                # 使用json_repair尝试修复
+                repaired = repair_json(json_str=input_str, return_objects=False)
+                return json.loads(repaired)
+            except (json.JSONDecodeError, Exception) as e:
+                # 如果还是失败，尝试提取JSON部分
+                pattern = r"\{(.*)\}"
+                match = re.search(pattern, input_str)
+                if match:
+                    try:
+                        extracted = "{" + match.group(1) + "}"
+                        return json.loads(extracted)
+                    except:
+                        raise ValueError(f"Unable to parse JSON data: {str(e)}")
+                raise ValueError(f"Unable to parse JSON data: {str(e)}")
+
     def extract_list_length(data):
         """递归查找最长列表的长度"""
         if isinstance(data, dict):
@@ -404,7 +591,6 @@ def json_to_dataframe(json_data):
         elif isinstance(data, list):
             if not data:
                 return 1
-            # 移除对基本类型列表的特殊处理
             return len(data)
         return 1
 
@@ -424,12 +610,10 @@ def json_to_dataframe(json_data):
             
             # 统一处理所有类型的列表
             if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
-                # 基本类型列表也展开成多行
                 if prefix:
                     items[prefix] = []
                     for item in data:
                         items[prefix].append(item)
-                    # 如果当前列表长度小于最大行数，用None填充
                     if len(items[prefix]) < max_rows:
                         items[prefix].extend([None] * (max_rows - len(items[prefix])))
                 return items
@@ -456,8 +640,6 @@ def json_to_dataframe(json_data):
             
             for key, value in data.items():
                 new_key = f"{prefix}/{key}" if prefix else key
-                
-                # 递归处理值
                 temp = flatten_json(value, new_key, row_index, max_list_length)
                 for k, v in temp.items():
                     if not items[k]:
@@ -466,7 +648,6 @@ def json_to_dataframe(json_data):
                         if len(v) == max_rows:
                             items[k] = v
                         else:
-                            # 确保列表值正确对齐到行
                             items[k][:len(v)] = v
                             if len(v) < max_rows:
                                 items[k][len(v):] = [None] * (max_rows - len(v))
@@ -477,38 +658,35 @@ def json_to_dataframe(json_data):
             
         return items
 
-    # 转换输入数据
-    if isinstance(json_data, str):
-        try:
-            data = json.loads(json_data)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON string: {str(e)}")
-    else:
-        data = json_data
-
-    # 如果输入是列表，确保作为多行处理
-    if isinstance(data, list):
-        if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
-            # 基本类型列表转换为单列多行DataFrame
-            return pd.DataFrame({"value": data})
+    try:
+        # 尝试修复和解析JSON数据
+        data = try_repair_json(json_data)
         
-    # 计算需要的总行数
-    max_rows = extract_list_length(data)
-    
-    # 展平JSON结构
-    flat_data = flatten_json(data, max_rows=max_rows)
-    
-    # 如果没有数据，返回空DataFrame
-    if not flat_data:
-        return pd.DataFrame()
+        # 如果输入是列表，确保作为多行处理
+        if isinstance(data, list):
+            if all(isinstance(x, (str, int, float, bool, type(None))) for x in data):
+                return pd.DataFrame({"value": data})
+            
+        # 计算需要的总行数
+        max_rows = extract_list_length(data)
+        
+        # 展平JSON结构
+        flat_data = flatten_json(data, max_rows=max_rows)
+        
+        # 如果没有数据，返回空DataFrame
+        if not flat_data:
+            return pd.DataFrame()
 
-    # 创建DataFrame
-    df = pd.DataFrame(flat_data)
-    
-    # 清理列名，移除开头的/
-    df.columns = [col[1:] if col.startswith('/') else col for col in df.columns]
-    
-    # 删除全为空值的行
-    df = df.dropna(how='all')
-    
-    return df
+        # 创建DataFrame
+        df = pd.DataFrame(flat_data)
+        
+        # 清理列名，移除开头的/
+        df.columns = [col[1:] if col.startswith('/') else col for col in df.columns]
+        
+        # 删除全为空值的行
+        df = df.dropna(how='all')
+        
+        return df
+        
+    except Exception as e:
+        raise ValueError(f"Error processing JSON data: {str(e)}")
