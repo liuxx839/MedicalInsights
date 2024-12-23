@@ -272,17 +272,32 @@ def display_tags():
             disease_tag_html = ", ".join(disease_tags)
             st.markdown(f"**Disease Tags:** {disease_tag_html}")
 
+# def process_rewrite(user_input, institution, department, person, model_choice, client,
+#                     rewrite, generate_structure_data, prob_identy):
+#     rewrite_text = rewrite(user_input, institution, department, person, model_choice, client)
+#     try:
+#         table_text = generate_structure_data(user_input, model_choice, client)
+#         st.session_state.table_df = json_to_dataframe(table_text)
+#     except Exception as e:
+#         st.error(f"生成表格数据时出错: {str(e)}")
+#         st.session_state.table_df = None   
+#     potential_issues = prob_identy(table_text, model_choice, client)
+
+#     st.session_state.rewrite_text = rewrite_text
+#     st.session_state.potential_issues = potential_issues
+
 def process_rewrite(user_input, institution, department, person, model_choice, client,
                     rewrite, generate_structure_data, prob_identy):
     rewrite_text = rewrite(user_input, institution, department, person, model_choice, client)
+    table_text = generate_structure_data(user_input, model_choice, client)
+    
     try:
-        table_text = generate_structure_data(user_input, model_choice, client)
         st.session_state.table_df = json_to_dataframe(table_text)
-    except Exception as e:
-        st.error(f"生成表格数据时出错: {str(e)}")
+    except Exception:
+        # 只在 JSON 转换失败时静默设置为 None
         st.session_state.table_df = None   
+        
     potential_issues = prob_identy(table_text, model_choice, client)
-
     st.session_state.rewrite_text = rewrite_text
     st.session_state.potential_issues = potential_issues
 
