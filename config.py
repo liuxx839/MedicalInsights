@@ -524,7 +524,7 @@ from json_repair import repair_json
 import logging
 import ast
 
-def enhanced_json_to_dataframe(json_data):
+def json_to_dataframe(json_data):
     """
     将复杂的JSON数据转换为DataFrame格式，支持修复损坏的JSON。
     支持嵌套的字典、列表，将多条数据分别放入不同行。
