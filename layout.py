@@ -35,6 +35,19 @@ def load_embeddings():
         st.error("Embeddings file not found. Please make sure 'embeddings.pkl' exists in the current directory.")
         return None
 
+def get_color(similarity):
+    if similarity >= 0.8:
+        return "#067647"  # 绿色
+    elif similarity >= 0.6:
+        return "#B42318"  # 红色
+    elif similarity >= 0.4:
+        return "#B54708"  # 棕色
+    elif similarity >= 0.2:
+        return "#175CD3"  # 蓝色
+    elif similarity >= 0.1:
+        return "#282828"  # 黑色
+    else:
+        return "#7A00E6"  # 紫色
 # def get_similar_content(user_input, embeddings_data, model, top_k=5):
 #     """
 #     Find top-k similar content based on embeddings
@@ -339,43 +352,29 @@ def setup_sidebar(
         #             if i < len(st.session_state.similar_contents) - 1:
         #                 st.markdown("<hr style='margin: 5px 0px'>", unsafe_allow_html=True)
 
-def get_color(similarity):
-    if similarity >= 0.8:
-        return "#067647"  # 绿色
-    elif similarity >= 0.6:
-        return "#B42318"  # 红色
-    elif similarity >= 0.4:
-        return "#B54708"  # 棕色
-    elif similarity >= 0.2:
-        return "#175CD3"  # 蓝色
-    elif similarity >= 0.1:
-        return "#282828"  # 黑色
-    else:
-        return "#7A00E6"  # 紫色
-
-            if "similar_contents" in st.session_state and st.session_state.similar_contents:
-                with st.expander("相似内容 (Top 5)", expanded=True):
-                    for i, item in enumerate(st.session_state.similar_contents):
-                        color = get_color(item['similarity'])
-                        with st.container():
-                            col1, col2 = st.columns([2, 8])
-                            with col1:
-                                st.markdown(f"<h3 style='margin-bottom: 0; color: {color};'>{i+1}</h3>", unsafe_allow_html=True)
-                                st.markdown(f"<p style='color: {color}; font-size: 0.9em; margin-top: 0; font-weight: bold;'>相似度: {item['similarity']:.2f}</p>", unsafe_allow_html=True)
-                                if 'timestamp' in item:
-                                    st.markdown(f"<p style='color: #666; font-size: 0.8em;'>{item['timestamp']}</p>", unsafe_allow_html=True)
-                            with col2:
-                                st.markdown(
-                                    f"""
-                                    <div style='background-color: {color}22; border-left: 3px solid {color}; border-radius: 5px; padding: 10px; height: 100px; overflow-y: auto;'>
-                                        {item['content']}
-                                    </div>
-                                    """,
-                                    unsafe_allow_html=True
-                                )
-                            
-                            if i < len(st.session_state.similar_contents) - 1:
-                                st.markdown("<hr style='margin: 15px 0px; border: none; height: 1px; background-color: #e0e0e0;'>", unsafe_allow_html=True)
+        if "similar_contents" in st.session_state and st.session_state.similar_contents:
+            with st.expander("相似内容 (Top 5)", expanded=True):
+                for i, item in enumerate(st.session_state.similar_contents):
+                    color = get_color(item['similarity'])
+                    with st.container():
+                        col1, col2 = st.columns([2, 8])
+                        with col1:
+                            st.markdown(f"<h3 style='margin-bottom: 0; color: {color};'>{i+1}</h3>", unsafe_allow_html=True)
+                            st.markdown(f"<p style='color: {color}; font-size: 0.9em; margin-top: 0; font-weight: bold;'>相似度: {item['similarity']:.2f}</p>", unsafe_allow_html=True)
+                            if 'timestamp' in item:
+                                st.markdown(f"<p style='color: #666; font-size: 0.8em;'>{item['timestamp']}</p>", unsafe_allow_html=True)
+                        with col2:
+                            st.markdown(
+                                f"""
+                                <div style='background-color: {color}22; border-left: 3px solid {color}; border-radius: 5px; padding: 10px; height: 100px; overflow-y: auto;'>
+                                    {item['content']}
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        
+                        if i < len(st.session_state.similar_contents) - 1:
+                            st.markdown("<hr style='margin: 15px 0px; border: none; height: 1px; background-color: #e0e0e0;'>", unsafe_allow_html=True)
                 
         # 清除按钮处理
         with stylable_container(
