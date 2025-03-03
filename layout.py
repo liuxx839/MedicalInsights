@@ -284,10 +284,10 @@ def setup_sidebar(
                         key=f"similar_content_{i}",
                         disabled=True  # 禁用编辑
                     )
-            
-            # 减少内容之间的间距
-            if i < len(st.session_state.similar_contents) - 1:
-                st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
+                    
+                    # 减少内容之间的间距
+                    if i < len(st.session_state.similar_contents) - 1:
+                        st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
 
         # 清除按钮处理
         with stylable_container(
