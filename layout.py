@@ -35,6 +35,43 @@ def load_embeddings():
         st.error("Embeddings file not found. Please make sure 'embeddings.pkl' exists in the current directory.")
         return None
 
+# def get_similar_content(user_input, embeddings_data, model, top_k=5):
+#     """
+#     Find top-k similar content based on embeddings
+    
+#     Args:
+#         user_input (str): User input text
+#         embeddings_data (dict): Dictionary with embeddings and content
+#         model: SentenceTransformer model
+#         top_k (int): Number of similar contents to return
+        
+#     Returns:
+#         list: List of top-k similar contents
+#     """
+#     if embeddings_data is None or user_input.strip() == "":
+#         return []
+    
+#     # Get embeddings for user input
+#     user_embedding = model.encode([user_input])[0].reshape(1, -1)
+    
+#     # Get all stored embeddings
+#     stored_embeddings = np.array(embeddings_data['embeddings'])
+#     stored_contents = embeddings_data['contents']
+    
+#     # Calculate similarity
+#     similarities = cosine_similarity(user_embedding, stored_embeddings)[0]
+    
+#     # Get indices of top-k similar contents
+#     top_indices = similarities.argsort()[-top_k:][::-1]
+    
+#     # Return top-k similar contents with their similarity scores
+#     similar_contents = [
+#         {"content": stored_contents[idx], "similarity": similarities[idx]}
+#         for idx in top_indices
+#     ]
+    
+#     return similar_contents
+
 def get_similar_content(user_input, embeddings_data, model, top_k=5):
     """
     Find top-k similar content based on embeddings
@@ -58,17 +95,28 @@ def get_similar_content(user_input, embeddings_data, model, top_k=5):
     stored_embeddings = np.array(embeddings_data['embeddings'])
     stored_contents = embeddings_data['contents']
     
+    # Check if timestamps are available
+    has_timestamps = 'timestamps' in embeddings_data
+    
     # Calculate similarity
     similarities = cosine_similarity(user_embedding, stored_embeddings)[0]
     
     # Get indices of top-k similar contents
     top_indices = similarities.argsort()[-top_k:][::-1]
     
-    # Return top-k similar contents with their similarity scores
-    similar_contents = [
-        {"content": stored_contents[idx], "similarity": similarities[idx]}
-        for idx in top_indices
-    ]
+    # Return top-k similar contents with their similarity scores and timestamps if available
+    similar_contents = []
+    for idx in top_indices:
+        item = {
+            "content": stored_contents[idx],
+            "similarity": similarities[idx]
+        }
+        
+        # Add timestamp if available
+        if has_timestamps:
+            item["timestamp"] = embeddings_data['timestamps'][idx]
+            
+        similar_contents.append(item)
     
     return similar_contents
 
@@ -274,6 +322,9 @@ def setup_sidebar(
                     col1, col2 = st.columns([1, 9])
                     with col1:
                         st.markdown(f"**{i+1}. {item['similarity']:.2f}**")
+                        # Display timestamp if available
+                        if 'timestamp' in item:
+                            st.markdown(f"<small>{item['timestamp']}</small>", unsafe_allow_html=True)
                     with col2:
                         # Use a container with fixed height and scrollable content
                         st.text_area(
