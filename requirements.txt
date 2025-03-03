@@ -7,3 +7,7 @@ pandas
 streamlit_extras
 pyperclip
 json-repair
+sentence-transformers
+numpy
+scikit-learn
+
