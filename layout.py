@@ -10,11 +10,67 @@ from zhipuai import ZhipuAI
 import os
 import base64
 from io import BytesIO
+import numpy as np
+import pickle
+from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer
 
 # api_key = os.environ.get("GROQ_API_KEY")
 # client = Groq(api_key=api_key)
 api_key_vision = os.environ.get("ZHIPU_API_KEY")
 client_vision = ZhipuAI(api_key=api_key_vision)
+
+# Load embedding model
+@st.cache_resource
+def load_embedding_model():
+    return SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+# Load embeddings from pkl file
+@st.cache_data
+def load_embeddings():
+    try:
+        with open('embeddings.pkl', 'rb') as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        st.error("Embeddings file not found. Please make sure 'embeddings.pkl' exists in the current directory.")
+        return None
+
+def get_similar_content(user_input, embeddings_data, model, top_k=5):
+    """
+    Find top-k similar content based on embeddings
+    
+    Args:
+        user_input (str): User input text
+        embeddings_data (dict): Dictionary with embeddings and content
+        model: SentenceTransformer model
+        top_k (int): Number of similar contents to return
+        
+    Returns:
+        list: List of top-k similar contents
+    """
+    if embeddings_data is None or user_input.strip() == "":
+        return []
+    
+    # Get embeddings for user input
+    user_embedding = model.encode([user_input])[0].reshape(1, -1)
+    
+    # Get all stored embeddings
+    stored_embeddings = np.array(embeddings_data['embeddings'])
+    stored_contents = embeddings_data['contents']
+    
+    # Calculate similarity
+    similarities = cosine_similarity(user_embedding, stored_embeddings)[0]
+    
+    # Get indices of top-k similar contents
+    top_indices = similarities.argsort()[-top_k:][::-1]
+    
+    # Return top-k similar contents with their similarity scores
+    similar_contents = [
+        {"content": stored_contents[idx], "similarity": similarities[idx]}
+        for idx in top_indices
+    ]
+    
+    return similar_contents
 
 def encode_image(image):
     """
@@ -96,6 +152,10 @@ def setup_layout(
     prob_identy, generate_structure_data,
     model_choice, client
 ):
+    # Load embedding model and embeddings
+    embedding_model = load_embedding_model()
+    embeddings_data = load_embeddings()
+    
     # 更新标题样式
     st.markdown("""
     <h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Medical Insights Copilot</h1>
@@ -109,7 +169,8 @@ def setup_layout(
         institutions, departments, persons,
         generate_tag, generate_diseases_tag, rewrite,
         prob_identy, generate_structure_data,
-        model_choice, client
+        model_choice, client,
+        embedding_model, embeddings_data
     )
     
     # Main page layout
@@ -121,7 +182,8 @@ def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
     prob_identy, generate_structure_data,
-    model_choice, client
+    model_choice, client,
+    embedding_model, embeddings_data
 ):
     with st.sidebar:
         st.markdown("""
@@ -151,6 +213,15 @@ def setup_sidebar(
         with tab1:
             # 使用动态key创建文本框
             user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
+            
+            # Find similar content when user inputs text
+            if user_input and user_input.strip() != "":
+                # Store in session state to avoid recalculating on every rerun
+                if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
+                    with st.spinner("正在查找相似内容..."):
+                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model)
+                        st.session_state.similar_contents = similar_contents
+                        st.session_state.last_input = user_input
 
         with tab2:
             # 初始化 session state
@@ -173,6 +244,11 @@ def setup_sidebar(
                             st.session_state.extracted_text = extracted_text
                             st.session_state.previous_file_name = current_file_name
                             user_input = extracted_text
+                            
+                            # Find similar content for extracted text
+                            similar_contents = get_similar_content(extracted_text, embeddings_data, embedding_model)
+                            st.session_state.similar_contents = similar_contents
+                            st.session_state.last_input = extracted_text
                     except Exception as e:
                         st.error(f"图片处理出错: {str(e)}")
                         user_input = ""
@@ -183,6 +259,15 @@ def setup_sidebar(
                 
                 # 显示提取的文字
                 st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
+
+        # 显示相似内容
+        if "similar_contents" in st.session_state and st.session_state.similar_contents:
+            with st.expander("相似内容 (Top 5)"):
+                for i, item in enumerate(st.session_state.similar_contents):
+                    st.markdown(f"**相似度: {item['similarity']:.2f}**")
+                    st.markdown(f"```\n{item['content']}\n```")
+                    if i < len(st.session_state.similar_contents) - 1:
+                        st.markdown("---")
 
         # 清除按钮处理
         with stylable_container(
@@ -203,7 +288,9 @@ def setup_sidebar(
                     'disease_tags', 
                     'rewrite_text', 
                     'table_df', 
-                    'potential_issues'
+                    'potential_issues',
+                    'similar_contents',
+                    'last_input'
                 ]
                 for key in keys_to_clear:
                     if key in st.session_state:
@@ -271,20 +358,6 @@ def display_tags():
             disease_tags = [tag for tag in disease_tags if tag]
             disease_tag_html = ", ".join(disease_tags)
             st.markdown(f"**Disease Tags:** {disease_tag_html}")
-
-# def process_rewrite(user_input, institution, department, person, model_choice, client,
-#                     rewrite, generate_structure_data, prob_identy):
-#     rewrite_text = rewrite(user_input, institution, department, person, model_choice, client)
-#     try:
-#         table_text = generate_structure_data(user_input, model_choice, client)
-#         st.session_state.table_df = json_to_dataframe(table_text)
-#     except Exception as e:
-#         st.error(f"生成表格数据时出错: {str(e)}")
-#         st.session_state.table_df = None   
-#     potential_issues = prob_identy(table_text, model_choice, client)
-
-#     st.session_state.rewrite_text = rewrite_text
-#     st.session_state.potential_issues = potential_issues
 
 def process_rewrite(user_input, institution, department, person, model_choice, client,
                     rewrite, generate_structure_data, prob_identy):
