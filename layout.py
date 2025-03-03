@@ -20,20 +20,20 @@ from sentence_transformers import SentenceTransformer
 api_key_vision = os.environ.get("ZHIPU_API_KEY")
 client_vision = ZhipuAI(api_key=api_key_vision)
 
-# Load embedding model
-# @st.cache_resource
-# def load_embedding_model():
-#     return SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-
+## Load embedding model
 @st.cache_resource
 def load_embedding_model():
-    # Use local model directory instead of downloading from HuggingFace
-    local_model_path = './embed_models/sentence-transformer'
-    try:
-        return SentenceTransformer(local_model_path)
-    except Exception as e:
-        st.error(f"Error loading model from {local_model_path}: {str(e)}")
-        return None
+    return SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+# @st.cache_resource
+# def load_embedding_model():
+#     # Use local model directory instead of downloading from HuggingFace
+#     local_model_path = './embed_models/sentence-transformer'
+#     try:
+#         return SentenceTransformer(local_model_path)
+#     except Exception as e:
+#         st.error(f"Error loading model from {local_model_path}: {str(e)}")
+#         return None
         
 # Load embeddings from pkl file
 @st.cache_data
