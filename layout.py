@@ -260,14 +260,34 @@ def setup_sidebar(
                 # 显示提取的文字
                 st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
 
+        # # 显示相似内容
+        # if "similar_contents" in st.session_state and st.session_state.similar_contents:
+        #     with st.expander("相似内容 (Top 5)"):
+        #         for i, item in enumerate(st.session_state.similar_contents):
+        #             st.markdown(f"**相似度: {item['similarity']:.2f}**")
+        #             st.markdown(f"```\n{item['content']}\n```")
+        #             if i < len(st.session_state.similar_contents) - 1:
+        #                 st.markdown("---")
+
         # 显示相似内容
         if "similar_contents" in st.session_state and st.session_state.similar_contents:
             with st.expander("相似内容 (Top 5)"):
                 for i, item in enumerate(st.session_state.similar_contents):
+                    # 使用紧凑布局
                     st.markdown(f"**相似度: {item['similarity']:.2f}**")
-                    st.markdown(f"```\n{item['content']}\n```")
-                    if i < len(st.session_state.similar_contents) - 1:
-                        st.markdown("---")
+                    
+                    # 使用可滚动的文本框来展示内容
+                    st.text_area(
+                        label="",
+                        value=item['content'],
+                        height=min(200, max(50, len(item['content']) // 4)),  # 动态调整高度
+                        key=f"similar_content_{i}",
+                        disabled=True  # 禁用编辑
+                    )
+            
+            # 减少内容之间的间距
+            if i < len(st.session_state.similar_contents) - 1:
+                st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
 
         # 清除按钮处理
         with stylable_container(
