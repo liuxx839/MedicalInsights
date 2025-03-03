@@ -219,7 +219,7 @@ def setup_sidebar(
                 # Store in session state to avoid recalculating on every rerun
                 if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
                     with st.spinner("正在查找相似内容..."):
-                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model,top_k = 10)
+                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model,top_k = 5)
                         st.session_state.similar_contents = similar_contents
                         st.session_state.last_input = user_input
 
