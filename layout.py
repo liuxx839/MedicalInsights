@@ -260,7 +260,7 @@ def setup_sidebar(
                 # 显示提取的文字
                 st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
 
-        # # 显示相似内容
+        # 显示相似内容
         # if "similar_contents" in st.session_state and st.session_state.similar_contents:
         #     with st.expander("相似内容 (Top 5)"):
         #         for i, item in enumerate(st.session_state.similar_contents):
@@ -268,31 +268,26 @@ def setup_sidebar(
         #             st.markdown(f"```\n{item['content']}\n```")
         #             if i < len(st.session_state.similar_contents) - 1:
         #                 st.markdown("---")
-
-        # 显示相似内容
         if "similar_contents" in st.session_state and st.session_state.similar_contents:
-            with st.expander("相似内容 (Top 5)"):
+            with st.expander("相似内容 (Top 5)", expanded=True):
                 for i, item in enumerate(st.session_state.similar_contents):
-                    # 显示相似度
-                    st.markdown(f"**相似度: {item['similarity']:.2f}**")
+                    col1, col2 = st.columns([1, 9])
+                    with col1:
+                        st.markdown(f"**{i+1}. {item['similarity']:.2f}**")
+                    with col2:
+                        # Use a container with fixed height and scrollable content
+                        st.text_area(
+                            label="",
+                            value=item['content'],
+                            height=100,  # Fixed height
+                            key=f"similar_content_{i}"
+                        )
                     
-                    # 使用文本框展示内容，并允许编辑
-                    content_key = f"similar_content_{i}"
-                    user_editable_content = st.text_area(
-                        label="",
-                        value=item['content'],
-                        height=min(200, max(68, len(item['content']) // 4),  # 动态调整高度
-                        key=content_key
-                    )
-                    
-                    # 添加复制按钮
-                    if st.button("📋 复制", key=f"copy_button_{i}"):
-                        st.code(user_editable_content, language=None)
-                        st.toast("内容已复制到剪贴板！", icon="📋")
-                    
-                    # 添加分隔线
+                    # Remove the separator for a more compact look
                     if i < len(st.session_state.similar_contents) - 1:
-                        st.markdown("---")
+                        st.markdown("<hr style='margin: 5px 0px'>", unsafe_allow_html=True)
+
+
                 
         # 清除按钮处理
         with stylable_container(
