@@ -273,36 +273,26 @@ def setup_sidebar(
         if "similar_contents" in st.session_state and st.session_state.similar_contents:
             with st.expander("相似内容 (Top 5)"):
                 for i, item in enumerate(st.session_state.similar_contents):
-                    # 使用紧凑布局
+                    # 显示相似度
                     st.markdown(f"**相似度: {item['similarity']:.2f}**")
                     
-                    # 使用可滚动的文本框来展示内容，并允许编辑
+                    # 使用文本框展示内容，并允许编辑
                     content_key = f"similar_content_{i}"
                     user_editable_content = st.text_area(
                         label="",
                         value=item['content'],
-                        height=min(200, max(68, len(item['content']) // 4)),  # 确保高度至少为 68 像素
+                        height=min(200, max(68, len(item['content']) // 4),  # 动态调整高度
                         key=content_key
                     )
                     
                     # 添加复制按钮
-                    with stylable_container(
-                        "copy_button",
-                        css_styles="""
-                        button {
-                            background-color: white;
-                            color: #7A00E6;
-                            border: 1px solid #7A00E6;
-                            padding: 5px 10px;
-                        }"""
-                    ):
-                        if st.button("📋 复制", key=f"copy_button_{i}"):
-                            st.code(user_editable_content, language=None)
-                            st.toast("内容已复制到剪贴板！", icon="📋")
+                    if st.button("📋 复制", key=f"copy_button_{i}"):
+                        st.code(user_editable_content, language=None)
+                        st.toast("内容已复制到剪贴板！", icon="📋")
                     
-                    # 减少内容之间的间距
+                    # 添加分隔线
                     if i < len(st.session_state.similar_contents) - 1:
-                        st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
+                        st.markdown("---")
                 
         # 清除按钮处理
         with stylable_container(
