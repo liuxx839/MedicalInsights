@@ -280,7 +280,7 @@ def setup_sidebar(
                     st.text_area(
                         label="",
                         value=item['content'],
-                        height=min(200, max(50, len(item['content']) // 4)),  # 动态调整高度
+                        height=min(200, max(68, len(item['content']) // 4)),  # 确保高度至少为 68 像素
                         key=f"similar_content_{i}",
                         disabled=True  # 禁用编辑
                     )
