@@ -45,19 +45,19 @@ def load_embeddings():
         st.error("Embeddings file not found. Please make sure 'embeddings.pkl' exists in the current directory.")
         return None
 
-def get_color(similarity):
-    if similarity >= 0.8:
-        return "#067647"  # 绿色
-    elif similarity >= 0.6:
-        return "#B42318"  # 红色
-    elif similarity >= 0.4:
-        return "#B54708"  # 棕色
-    elif similarity >= 0.2:
-        return "#175CD3"  # 蓝色
-    elif similarity >= 0.1:
-        return "#282828"  # 黑色
-    else:
-        return "#7A00E6"  # 紫色
+# def get_color(similarity):
+#     if similarity >= 0.8:
+#         return "#067647"  # 绿色
+#     elif similarity >= 0.6:
+#         return "#B42318"  # 红色
+#     elif similarity >= 0.4:
+#         return "#B54708"  # 棕色
+#     elif similarity >= 0.2:
+#         return "#175CD3"  # 蓝色
+#     elif similarity >= 0.1:
+#         return "#282828"  # 黑色
+#     else:
+#         return "#7A00E6"  # 紫色
 # def get_similar_content(user_input, embeddings_data, model, top_k=5):
 #     """
 #     Find top-k similar content based on embeddings
