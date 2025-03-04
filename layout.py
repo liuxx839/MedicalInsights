@@ -399,23 +399,30 @@ def setup_sidebar(
         
         if "similar_contents" in st.session_state and st.session_state.similar_contents:
             with st.expander("相似内容 (Top 5)", expanded=True):
+                # 添加比较结果显示
+                if user_input and user_input.strip() != "":
+                    api_key = os.environ.get("GROQ_API_KEY")
+                    client = Groq(api_key=api_key)
+                    comparison = generate_comparison(user_input, 'llama3-70b-8192', client, st.session_state.similar_contents)
+                    st.markdown("### 内容比较")
+                    st.markdown(comparison)
+                    st.markdown("---")
+                
+                # 原有的相似内容显示代码
                 for i, item in enumerate(st.session_state.similar_contents):
                     col1, col2 = st.columns([1, 9])
                     with col1:
                         st.markdown(f"**{i+1}. {item['similarity']:.2f}**")
-                        # Display timestamp if available
                         if 'timestamp' in item:
                             st.markdown(f"<small>{item['timestamp']}</small>", unsafe_allow_html=True)
                     with col2:
-                        # Use a container with fixed height and scrollable content
                         st.text_area(
                             label="",
                             value=item['content'],
-                            height=100,  # Fixed height
+                            height=100,
                             key=f"similar_content_{i}"
                         )
                     
-                    # Remove the separator for a more compact look
                     if i < len(st.session_state.similar_contents) - 1:
                         st.markdown("<hr style='margin: 5px 0px'>", unsafe_allow_html=True)
 
@@ -605,3 +612,35 @@ def display_rewrite_results():
         """,
         unsafe_allow_html=True
     )
+
+def generate_comparison(text, model_choice, client, similar_contents):
+    """
+    Generate comparison between user input and similar contents
+    """
+    # 构建知识库内容字符串
+    knowledge_base = []
+    for i, item in enumerate(similar_contents):
+        knowledge_base.append(f"[{i+1}] {item['content']}")
+    knowledge_base_str = "\n".join(knowledge_base)
+    
+    completion = client.chat.completions.create(
+        model=model_choice,
+        messages=[
+            {
+                "role": "system", 
+                "content": """你的职责是比较用户的输入，和知识库内容的相似性和不同，要根据内容本身，尽量不要展开推理，输出格式：
+相似观点：xxxx （给出出处index）
+不同观点：xxxx。（给出出处index）
+
+整体尽量简洁，如果观点不存在，留位空即可"""
+            },
+            {
+                "role": "user", 
+                "content": f"用户输入：{text}\n知识库：{knowledge_base_str}"
+            }
+        ],
+        temperature=0.1,
+        max_tokens=1000,
+    )
+    summary = completion.choices[0].message.content.strip()
+    return summary
