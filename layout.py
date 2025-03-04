@@ -21,9 +21,13 @@ api_key_vision = os.environ.get("ZHIPU_API_KEY")
 client_vision = ZhipuAI(api_key=api_key_vision)
 
 ## Load embedding model
+# @st.cache_resource
+# def load_embedding_model():
+#     return SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
 @st.cache_resource
 def load_embedding_model():
-    return SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    return ZhipuAI(api_key=api_key_vision)
 
 # @st.cache_resource
 # def load_embedding_model():
@@ -95,14 +99,62 @@ def load_embeddings():
     
 #     return similar_contents
 
-def get_similar_content(user_input, embeddings_data, model, top_k=5):
+# def get_similar_content(user_input, embeddings_data, model, top_k=5):
+#     """
+#     Find top-k similar content based on embeddings
+    
+#     Args:
+#         user_input (str): User input text
+#         embeddings_data (dict): Dictionary with embeddings and content
+#         model: SentenceTransformer model
+#         top_k (int): Number of similar contents to return
+        
+#     Returns:
+#         list: List of top-k similar contents
+#     """
+#     if embeddings_data is None or user_input.strip() == "":
+#         return []
+    
+#     # Get embeddings for user input
+#     user_embedding = model.encode([user_input])[0].reshape(1, -1)
+    
+#     # Get all stored embeddings
+#     stored_embeddings = np.array(embeddings_data['embeddings'])
+#     stored_contents = embeddings_data['contents']
+    
+#     # Check if timestamps are available
+#     has_timestamps = 'timestamps' in embeddings_data
+    
+#     # Calculate similarity
+#     similarities = cosine_similarity(user_embedding, stored_embeddings)[0]
+    
+#     # Get indices of top-k similar contents
+#     top_indices = similarities.argsort()[-top_k:][::-1]
+    
+#     # Return top-k similar contents with their similarity scores and timestamps if available
+#     similar_contents = []
+#     for idx in top_indices:
+#         item = {
+#             "content": stored_contents[idx],
+#             "similarity": similarities[idx]
+#         }
+        
+#         # Add timestamp if available
+#         if has_timestamps:
+#             item["timestamp"] = embeddings_data['timestamps'][idx]
+            
+#         similar_contents.append(item)
+    
+#     return similar_contents
+
+def get_similar_content(user_input, embeddings_data, client, top_k=5):
     """
     Find top-k similar content based on embeddings
     
     Args:
         user_input (str): User input text
         embeddings_data (dict): Dictionary with embeddings and content
-        model: SentenceTransformer model
+        client: ZhipuAI client
         top_k (int): Number of similar contents to return
         
     Returns:
@@ -112,7 +164,11 @@ def get_similar_content(user_input, embeddings_data, model, top_k=5):
         return []
     
     # Get embeddings for user input
-    user_embedding = model.encode([user_input])[0].reshape(1, -1)
+    response = client.embeddings.create(
+        model="embedding-3",
+        input=[user_input]
+    )
+    user_embedding = np.array(response.data[0].embedding).reshape(1, -1)
     
     # Get all stored embeddings
     stored_embeddings = np.array(embeddings_data['embeddings'])
