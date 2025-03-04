@@ -166,7 +166,8 @@ def get_similar_content(user_input, embeddings_data, client, top_k=5):
     # Get embeddings for user input
     response = client.embeddings.create(
         model="embedding-3",
-        input=[user_input]
+        input=[user_input],
+        dimensions=256
     )
     user_embedding = np.array(response.data[0].embedding).reshape(1, -1)
     
