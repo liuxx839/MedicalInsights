@@ -43,7 +43,7 @@ def load_embedding_model():
 @st.cache_data
 def load_embeddings():
     try:
-        with open('medical_text_embeddings_zhipu_256_250305.pkl', 'rb') as f:
+        with open('medical_text_embeddings_256_250305.pkl', 'rb') as f:
             return pickle.load(f)
     except FileNotFoundError:
         st.error("Embeddings file not found. Please make sure 'embeddings.pkl' exists in the current directory.")
