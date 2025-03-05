@@ -629,9 +629,11 @@ def generate_comparison(text, model_choice, client, similar_contents):
             {
                 "role": "system", 
                 "content": """你的职责是比较用户的输入，和知识库内容的相似性和不同，要根据内容本身，尽量不要展开推理，输出格式：
-相似观点：xxxx （给出出处index）
-不同观点：xxxx。（给出出处index）
+相似观点：xxxx （给出出处）
+不同观点：xxxx。（给出出处）
+矛盾观点：xxxx。（给出出处）
 
+请仔细对比内容，重点在是否有矛盾的观点，要着重留意
 整体尽量简洁，如果观点不存在，留位空即可"""
             },
             {
