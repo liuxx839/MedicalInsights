@@ -339,17 +339,40 @@ def setup_sidebar(
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
         with tab1:
-            # 使用动态key创建文本框
-            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
+            # 添加命令提示
+            commands = {
+                "/translate": "将内容翻译成专业英文",
+                "/fact": "仅检查事实准确性",
+                "/summary": "生成内容摘要"
+            }
             
-            # Find similar content when user inputs text
-            if user_input and user_input.strip() != "":
-                # Store in session state to avoid recalculating on every rerun
-                if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
-                    with st.spinner("正在查找相似内容..."):
-                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model,top_k = 5)
-                        st.session_state.similar_contents = similar_contents
-                        st.session_state.last_input = user_input
+            # 显示可用命令提示
+            st.markdown("""
+            <div style="font-size: 12px; color: #666;">
+            可用命令：
+            • /translate - 翻译成专业英文
+            • /fact - 检查事实
+            • /summary - 生成摘要
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 使用动态key创建文本框
+            user_input = st.text_area("", placeholder="请输入内容\n提示：输入 / 显示快捷命令", key=key, height=200)
+            
+            # 处理命令
+            if user_input.startswith('/'):
+                command = user_input.split()[0].lower()
+                text_content = ' '.join(user_input.split()[1:])
+                
+                if command in commands:
+                    with st.spinner('处理中...'):
+                        result = process_command(command, text_content, model_choice, client)
+                        st.session_state.rewrite_text = result
+                        # 清除其他相关状态
+                        if 'table_df' in st.session_state:
+                            del st.session_state.table_df
+                        if 'potential_issues' in st.session_state:
+                            del st.session_state.potential_issues
 
         with tab2:
             # 初始化 session state
@@ -646,3 +669,28 @@ def generate_comparison(text, model_choice, client, similar_contents):
     )
     summary = completion.choices[0].message.content.strip()
     return summary
+
+def process_command(command, text, model_choice, client):
+    """处理不同的命令并返回结果"""
+    if not text.strip():
+        return "请在命令后输入需要处理的文本"
+        
+    system_messages = {
+        "/translate": "你是一个医学翻译专家。请将输入的中文内容翻译成专业的医学英语。保持专业性和准确性。",
+        "/fact": "你是一个医学事实核查专家。请仔细检查输入内容中的医学相关陈述，指出可能的事实错误或需要验证的内容。",
+        "/summary": "你是一个医学内容总结专家。请简明扼要地总结输入内容的要点，突出关键医学信息。"
+    }
+    
+    try:
+        completion = client.chat.completions.create(
+            model=model_choice,
+            messages=[
+                {"role": "system", "content": system_messages[command]},
+                {"role": "user", "content": text}
+            ],
+            temperature=0.1,
+            max_tokens=1000,
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        return f"处理出错: {str(e)}"
