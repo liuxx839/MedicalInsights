@@ -306,7 +306,7 @@ def setup_layout(
         model_choice, client, user_input
     )
 
-# Modify the setup_sidebar function to integrate slash commands
+# Modify the setup_sidebar function to integrate slash commands correctly
 def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
@@ -336,12 +336,8 @@ def setup_sidebar(
             st.session_state.clear_clicked = False
         else:
             key = "user_input"
-            
-        # Initialize session state for slash command suggestions
-        if "show_slash_suggestions" not in st.session_state:
-            st.session_state.show_slash_suggestions = False
-            
-        # Initialize session state for command results
+        
+        # 初始化命令相关状态
         if "command_result" not in st.session_state:
             st.session_state.command_result = None
             st.session_state.original_text = None
@@ -351,56 +347,63 @@ def setup_sidebar(
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
         with tab1:
-            # Create a container for the textarea and suggestions
-            input_container = st.container()
+            # 增加文本变化计数器来触发更新
+            st.session_state.text_change_counter += 1
             
-            with input_container:
-                # 使用动态key创建文本框
-                user_input = st.text_area(
-                    "", 
-                    placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制\n输入'/'可查看特殊命令", 
-                    key=key, 
-                    height=200,
-                    on_change=lambda: check_for_slash(key)
-                )
+            # 使用动态key创建文本框
+            user_input = st.text_area(
+                "", 
+                value=st.session_state.get(key, ""),
+                placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制\n输入'/'可查看特殊命令", 
+                key=key, 
+                height=200
+            )
+            
+            # 检查是否键入了斜杠
+            show_suggestions = check_for_slash(user_input)
+            
+            # 显示命令建议
+            if show_suggestions:
+                st.markdown("<p style='color: #7A00E6; font-size: 14px;'>选择命令:</p>", unsafe_allow_html=True)
+                cmd_col1, cmd_col2, cmd_col3 = st.columns(3)
                 
-                # Check if we should show slash command suggestions
-                if st.session_state.show_slash_suggestions:
-                    cmd_col1, cmd_col2, cmd_col3 = st.columns(3)
-                    with cmd_col1:
-                        if st.button("🌐 翻译到专业英文"):
-                            st.session_state.user_input = "/翻译到专业英文 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
-                            st.session_state.show_slash_suggestions = False
-                            st.rerun()
-                    with cmd_col2:
-                        if st.button("🔍 检查事实"):
-                            st.session_state.user_input = "/检查事实 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
-                            st.session_state.show_slash_suggestions = False
-                            st.rerun()
-                    with cmd_col3:
-                        if st.button("📝 总结"):
-                            st.session_state.user_input = "/总结 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
-                            st.session_state.show_slash_suggestions = False
-                            st.rerun()
+                with cmd_col1:
+                    if st.button("🌐 翻译到专业英文", key="cmd_translate"):
+                        # 替换掉斜杠
+                        processed_text = "/翻译到专业英文 "
+                        st.session_state[key] = processed_text
+                        st.rerun()
+                        
+                with cmd_col2:
+                    if st.button("🔍 检查事实", key="cmd_fact"):
+                        processed_text = "/检查事实 "
+                        st.session_state[key] = processed_text
+                        st.rerun()
+                        
+                with cmd_col3:
+                    if st.button("📝 总结", key="cmd_summary"):
+                        processed_text = "/总结 "
+                        st.session_state[key] = processed_text
+                        st.rerun()
             
-            # Process slash commands if present
+            # 处理斜杠命令
             if user_input and user_input.strip().startswith("/"):
                 original_text, command_result, command_used = handle_slash_commands(user_input, model_choice, client)
                 if command_result:
                     st.session_state.command_result = command_result
                     st.session_state.original_text = original_text
                     st.session_state.command_used = command_used
-                    user_input = original_text  # Use the text without the command for similarity search
+                    # 对相似内容搜索使用不带命令的文本
+                    user_input = original_text
             
-            # Find similar content when user inputs text
-            if user_input and user_input.strip() != "":
-                # Store in session state to avoid recalculating on every rerun
+            # 当用户输入有效内容时查找相似内容
+            if user_input and user_input.strip() != "" and not show_suggestions:
+                # 存储到会话状态以避免在每次重新运行时重新计算
                 if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
                     with st.spinner("正在查找相似内容..."):
                         similar_contents = get_similar_content(user_input, embeddings_data, embedding_model, top_k=5)
                         st.session_state.similar_contents = similar_contents
                         st.session_state.last_input = user_input
-
         with tab2:
             # 初始化 session state
             if "previous_file_name" not in st.session_state:
@@ -632,7 +635,7 @@ def display_rewrite_results():
     if 'original_text' in st.session_state and st.session_state.original_text and st.session_state.command_used:
         with st.expander("查看原文", expanded=False):
             st.text_area("原文", st.session_state.original_text, height=150, disabled=True)
-            
+
     with stylable_container(
         "copy_button",
         css_styles="""
@@ -717,16 +720,15 @@ def generate_comparison(text, model_choice, client, similar_contents):
     return summary
 
 
-# Add this helper function to check for slash commands
-def check_for_slash(input_key):
-    """Check if the input starts with a slash and show suggestions if it does"""
-    user_input = st.session_state.get(input_key, "")
-    if user_input == "/":
-        st.session_state.show_slash_suggestions = True
-    elif not user_input.startswith("/"):
-        st.session_state.show_slash_suggestions = False
 
-# Add this function to handle slash commands
+def check_for_slash(text):
+    """Check if the text contains a slash and return True if it does"""
+    if text and text.strip() == "/":
+        return True
+    return False
+
+
+# Handle slash commands function stays the same
 def handle_slash_commands(text, model_choice, client):
     """
     Process slash commands from user input
@@ -761,7 +763,7 @@ def handle_slash_commands(text, model_choice, client):
     # No command found
     return text, None, None
 
-# Add these command functions
+# The implementation of the command functions remains the same
 def translate_to_professional_english(text, model_choice, client):
     """Translate content to professional medical English"""
     completion = client.chat.completions.create(
@@ -818,5 +820,3 @@ def summarize(text, model_choice, client):
         max_tokens=1000,
     )
     return completion.choices[0].message.content.strip()
-
-
