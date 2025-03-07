@@ -147,6 +147,10 @@ def load_embeddings():
     
 #     return similar_contents
 
+# Add this to session state initialization (near the top of your script)
+if 'text_change_counter' not in st.session_state:
+    st.session_state.text_change_counter = 0
+
 def get_similar_content(user_input, embeddings_data, client, top_k=5):
     """
     Find top-k similar content based on embeddings
