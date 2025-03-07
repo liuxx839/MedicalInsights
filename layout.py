@@ -339,88 +339,17 @@ def setup_sidebar(
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
         with tab1:
-            # 添加命令提示
-            commands = {
-                "/translate": "将内容翻译成专业英文",
-                "/fact": "仅检查事实准确性",
-                "/summary": "生成内容摘要"
-            }
-            
-            # 创建自动补全功能
-            if "text_input_key" not in st.session_state:
-                st.session_state.text_input_key = 0
-                
             # 使用动态key创建文本框
-            user_input = st.text_area(
-                "",
-                placeholder="请输入内容\n提示：输入 / 显示快捷命令",
-                key=f"user_input_{st.session_state.text_input_key}",
-                height=200
-            )
+            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
             
-            # 处理自动补全
-            if user_input == "/":
-                # 显示命令选项
-                command_choice = st.selectbox(
-                    "选择命令：",
-                    list(commands.keys()),
-                    format_func=lambda x: f"{x} - {commands[x]}"
-                )
-                if command_choice:
-                    st.session_state.text_input_key += 1
-                    st.experimental_rerun()
-            
-            # 处理命令
-            if user_input.startswith('/'):
-                command = user_input.split()[0].lower()
-                text_content = ' '.join(user_input.split()[1:])
-                
-                if command in commands:
-                    with st.spinner('处理中...'):
-                        result = process_command(command, text_content, model_choice, client)
-                        st.session_state.rewrite_text = result
-                        
-                        # 保持知识库功能
-                        if text_content.strip() != "":
-                            similar_contents = get_similar_content(text_content, embeddings_data, embedding_model)
-                            st.session_state.similar_contents = similar_contents
-                            st.session_state.last_input = text_content
-                        
-                        # 清除其他相关状态
-                        if 'table_df' in st.session_state:
-                            del st.session_state.table_df
-                        if 'potential_issues' in st.session_state:
-                            del st.session_state.potential_issues
-
-            # 显示相似内容
-            if "similar_contents" in st.session_state and st.session_state.similar_contents:
-                with st.expander("相似内容 (Top 5)", expanded=True):
-                    # 添加比较结果显示
-                    if user_input and user_input.strip() != "":
-                        api_key = os.environ.get("GROQ_API_KEY")
-                        client = Groq(api_key=api_key)
-                        comparison = generate_comparison(user_input, 'llama3-70b-8192', client, st.session_state.similar_contents)
-                        st.markdown("### 内容比较")
-                        st.markdown(comparison)
-                        st.markdown("---")
-                    
-                    # 显示相似内容
-                    for i, item in enumerate(st.session_state.similar_contents):
-                        col1, col2 = st.columns([1, 9])
-                        with col1:
-                            st.markdown(f"**{i+1}. {item['similarity']:.2f}**")
-                            if 'timestamp' in item:
-                                st.markdown(f"<small>{item['timestamp']}</small>", unsafe_allow_html=True)
-                        with col2:
-                            st.text_area(
-                                label="",
-                                value=item['content'],
-                                height=100,
-                                key=f"similar_content_{i}"
-                            )
-                        
-                        if i < len(st.session_state.similar_contents) - 1:
-                            st.markdown("<hr style='margin: 5px 0px'>", unsafe_allow_html=True)
+            # Find similar content when user inputs text
+            if user_input and user_input.strip() != "":
+                # Store in session state to avoid recalculating on every rerun
+                if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
+                    with st.spinner("正在查找相似内容..."):
+                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model,top_k = 5)
+                        st.session_state.similar_contents = similar_contents
+                        st.session_state.last_input = user_input
 
         with tab2:
             # 初始化 session state
@@ -459,6 +388,68 @@ def setup_sidebar(
                 # 显示提取的文字
                 st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
 
+        # 显示相似内容
+        # if "similar_contents" in st.session_state and st.session_state.similar_contents:
+        #     with st.expander("相似内容 (Top 5)"):
+        #         for i, item in enumerate(st.session_state.similar_contents):
+        #             st.markdown(f"**相似度: {item['similarity']:.2f}**")
+        #             st.markdown(f"```\n{item['content']}\n```")
+        #             if i < len(st.session_state.similar_contents) - 1:
+        #                 st.markdown("---")
+        
+        if "similar_contents" in st.session_state and st.session_state.similar_contents:
+            with st.expander("相似内容 (Top 5)", expanded=True):
+                # 添加比较结果显示
+                if user_input and user_input.strip() != "":
+                    api_key = os.environ.get("GROQ_API_KEY")
+                    client = Groq(api_key=api_key)
+                    comparison = generate_comparison(user_input, 'llama3-70b-8192', client, st.session_state.similar_contents)
+                    st.markdown("### 内容比较")
+                    st.markdown(comparison)
+                    st.markdown("---")
+                
+                # 原有的相似内容显示代码
+                for i, item in enumerate(st.session_state.similar_contents):
+                    col1, col2 = st.columns([1, 9])
+                    with col1:
+                        st.markdown(f"**{i+1}. {item['similarity']:.2f}**")
+                        if 'timestamp' in item:
+                            st.markdown(f"<small>{item['timestamp']}</small>", unsafe_allow_html=True)
+                    with col2:
+                        st.text_area(
+                            label="",
+                            value=item['content'],
+                            height=100,
+                            key=f"similar_content_{i}"
+                        )
+                    
+                    if i < len(st.session_state.similar_contents) - 1:
+                        st.markdown("<hr style='margin: 5px 0px'>", unsafe_allow_html=True)
+
+        # if "similar_contents" in st.session_state and st.session_state.similar_contents:
+        #     with st.expander("相似内容 (Top 5)", expanded=True):
+        #         for i, item in enumerate(st.session_state.similar_contents):
+        #             color = get_color(item['similarity'])
+        #             with st.container():
+        #                 col1, col2 = st.columns([2, 8])
+        #                 with col1:
+        #                     st.markdown(f"<h3 style='margin-bottom: 0; color: {color};'>{i+1}</h3>", unsafe_allow_html=True)
+        #                     st.markdown(f"<p style='color: {color}; font-size: 0.9em; margin-top: 0; font-weight: bold;'>相似度: {item['similarity']:.2f}</p>", unsafe_allow_html=True)
+        #                     if 'timestamp' in item:
+        #                         st.markdown(f"<p style='color: #666; font-size: 0.8em;'>{item['timestamp']}</p>", unsafe_allow_html=True)
+        #                 with col2:
+        #                     st.markdown(
+        #                         f"""
+        #                         <div style='background-color: {color}22; border-left: 3px solid {color}; border-radius: 5px; padding: 10px; height: 100px; overflow-y: auto;'>
+        #                             {item['content']}
+        #                         </div>
+        #                         """,
+        #                         unsafe_allow_html=True
+        #                     )
+                        
+        #                 if i < len(st.session_state.similar_contents) - 1:
+        #                     st.markdown("<hr style='margin: 15px 0px; border: none; height: 1px; background-color: #e0e0e0;'>", unsafe_allow_html=True)
+                
         # 清除按钮处理
         with stylable_container(
             "clear_button",
@@ -655,28 +646,3 @@ def generate_comparison(text, model_choice, client, similar_contents):
     )
     summary = completion.choices[0].message.content.strip()
     return summary
-
-def process_command(command, text, model_choice, client):
-    """处理不同的命令并返回结果"""
-    if not text.strip():
-        return "请在命令后输入需要处理的文本"
-        
-    system_messages = {
-        "/translate": "你是一个医学翻译专家。请将输入的中文内容翻译成专业的医学英语。保持专业性和准确性。",
-        "/fact": "你是一个医学事实核查专家。请仔细检查输入内容中的医学相关陈述，指出可能的事实错误或需要验证的内容。",
-        "/summary": "你是一个医学内容总结专家。请简明扼要地总结输入内容的要点，突出关键医学信息。"
-    }
-    
-    try:
-        completion = client.chat.completions.create(
-            model=model_choice,
-            messages=[
-                {"role": "system", "content": system_messages[command]},
-                {"role": "user", "content": text}
-            ],
-            temperature=0.1,
-            max_tokens=1000,
-        )
-        return completion.choices[0].message.content.strip()
-    except Exception as e:
-        return f"处理出错: {str(e)}"
