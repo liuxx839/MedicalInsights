@@ -319,6 +319,7 @@ def setup_sidebar(
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
         以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
         * Insight Copilot：您可以在下面提交您的初稿或上传图片，然后使此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
+        * 快捷命令：输入"/"可查看特殊命令（翻译到专业英文、检查事实、总结）
         </div>
         """, unsafe_allow_html=True)
         
@@ -339,17 +340,42 @@ def setup_sidebar(
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
         with tab1:
-            # 使用动态key创建文本框
-            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
-            
-            # Find similar content when user inputs text
-            if user_input and user_input.strip() != "":
-                # Store in session state to avoid recalculating on every rerun
-                if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
-                    with st.spinner("正在查找相似内容..."):
-                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model,top_k = 5)
-                        st.session_state.similar_contents = similar_contents
-                        st.session_state.last_input = user_input
+            input_container = st.container()
+            with input_container:
+                user_input = st.text_area(
+                    "", 
+                    placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制\n输入'/'可查看特殊命令", 
+                    key=key, 
+                    height=200,
+                    on_change=lambda: check_for_slash(key)
+                )
+                
+                if st.session_state.show_slash_suggestions:
+                    cmd_col1, cmd_col2, cmd_col3 = st.columns(3)
+                    with cmd_col1:
+                        if st.button("🌐 翻译到专业英文"):
+                            st.session_state.user_input = "/翻译到专业英文 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
+                            st.session_state.show_slash_suggestions = False
+                            st.rerun()
+                    with cmd_col2:
+                        if st.button("🔍 检查事实"):
+                            st.session_state.user_input = "/检查事实 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
+                            st.session_state.show_slash_suggestions = False
+                            st.rerun()
+                    with cmd_col3:
+                        if st.button("📝 总结"):
+                            st.session_state.user_input = "/总结 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
+                            st.session_state.show_slash_suggestions = False
+                            st.rerun()
+
+            # Process slash commands
+            if user_input and user_input.strip().startswith("/"):
+                original_text, command_result, command_used = handle_slash_commands(user_input, model_choice, client)
+                if command_result:
+                    st.session_state.command_result = command_result
+                    st.session_state.original_text = original_text
+                    st.session_state.command_used = command_used
+                    user_input = original_text
 
         with tab2:
             # 初始化 session state
@@ -558,7 +584,25 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
 def display_rewrite_results():
     st.markdown("<p style='font-size: 14px; font-weight: bold;'>Editable Rewritten Text:</p>", unsafe_allow_html=True)
 
-    if 'rewrite_text' in st.session_state:
+    # Check for command results first
+    if 'command_result' in st.session_state and st.session_state.command_result:
+        cmd_title = {
+            "/翻译到专业英文": "英文翻译结果",
+            "/检查事实": "事实检查结果",
+            "/总结": "内容总结"
+        }.get(st.session_state.command_used, "命令结果")
+        
+        st.markdown(f"<p style='font-size: 12px; color: #7A00E6;'>➡️ {cmd_title}</p>", unsafe_allow_html=True)
+        user_editable_text = st.text_area("", st.session_state.command_result, height=300)
+        st.session_state.rewrite_text = user_editable_text
+
+        # Show original text in expander
+        if st.session_state.original_text and st.session_state.command_used:
+            with st.expander("查看原文", expanded=False):
+                st.text_area("原文", st.session_state.original_text, height=150, disabled=True)
+    
+    # Otherwise show normal rewrite results
+    elif 'rewrite_text' in st.session_state:
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
     else:
@@ -646,3 +690,86 @@ def generate_comparison(text, model_choice, client, similar_contents):
     )
     summary = completion.choices[0].message.content.strip()
     return summary
+
+def handle_slash_commands(text, model_choice, client):
+    """
+    Process slash commands from user input
+    """
+    commands = {
+        "/翻译到专业英文": translate_to_professional_english,
+        "/检查事实": fact_check,
+        "/总结": summarize,
+    }
+    
+    for cmd, func in commands.items():
+        if text.startswith(cmd):
+            original_text = text[len(cmd):].strip()
+            if not original_text:
+                return text, "请在命令后输入内容", cmd
+            
+            result = func(original_text, model_choice, client)
+            return original_text, result, cmd
+    
+    return text, None, None
+
+def translate_to_professional_english(text, model_choice, client):
+    completion = client.chat.completions.create(
+        model=model_choice,
+        messages=[
+            {
+                "role": "system", 
+                "content": "You are a professional medical translator. Translate the given Chinese medical text into professional English medical terminology. Maintain all key information and use appropriate medical jargon where applicable."
+            },
+            {
+                "role": "user", 
+                "content": f"请将以下医学内容翻译成专业的英文:\n\n{text}"
+            }
+        ],
+        temperature=0.1,
+        max_tokens=1000,
+    )
+    return completion.choices[0].message.content.strip()
+
+def fact_check(text, model_choice, client):
+    completion = client.chat.completions.create(
+        model=model_choice,
+        messages=[
+            {
+                "role": "system", 
+                "content": "You are a medical fact-checker. Analyze the given medical content and identify any potential factual errors, exaggerations, or unsubstantiated claims. Format your response as a comprehensive list of findings with objective assessment."
+            },
+            {
+                "role": "user", 
+                "content": f"请检查以下医学内容中的事实性问题:\n\n{text}"
+            }
+        ],
+        temperature=0.1,
+        max_tokens=1000,
+    )
+    return completion.choices[0].message.content.strip()
+
+def summarize(text, model_choice, client):
+    completion = client.chat.completions.create(
+        model=model_choice,
+        messages=[
+            {
+                "role": "system", 
+                "content": "You are a medical content summarizer. Create a concise summary of the given medical text while preserving all key findings, methodologies, and conclusions. Focus on the most important clinical and research implications."
+            },
+            {
+                "role": "user", 
+                "content": f"请总结以下医学内容的要点:\n\n{text}"
+            }
+        ],
+        temperature=0.1,
+        max_tokens=1000,
+    )
+    return completion.choices[0].message.content.strip()
+
+def check_for_slash(input_key):
+    """Check if the input starts with a slash and show suggestions if it does"""
+    user_input = st.session_state.get(input_key, "")
+    if user_input == "/":
+        st.session_state.show_slash_suggestions = True
+    elif not user_input.startswith("/"):
+        st.session_state.show_slash_suggestions = False
