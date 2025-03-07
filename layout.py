@@ -147,10 +147,6 @@ def load_embeddings():
     
 #     return similar_contents
 
-# Add this to session state initialization (near the top of your script)
-if 'text_change_counter' not in st.session_state:
-    st.session_state.text_change_counter = 0
-
 def get_similar_content(user_input, embeddings_data, client, top_k=5):
     """
     Find top-k similar content based on embeddings
@@ -310,7 +306,6 @@ def setup_layout(
         model_choice, client, user_input
     )
 
-# Modify the setup_sidebar function to integrate slash commands correctly
 def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
@@ -324,7 +319,6 @@ def setup_sidebar(
         * Insight应涵盖4W要素（Who-谁、What-什么、Why-为什么、Wayfoward-未来方向）。<br>
         以下是一个合格样式的示例："一位{脱敏机构}的{科室}的{脱敏人物}指出{观点}，并阐述了{内容间的逻辑联系}，进而提出了{后续方案}"。<br>
         * Insight Copilot：您可以在下面提交您的初稿或上传图片，然后使此工具对内容进行打标或者重写。您还可以直接修改重写后的结果。
-        * 快捷命令：输入"/"可查看特殊命令（翻译到专业英文、检查事实、总结）
         </div>
         """, unsafe_allow_html=True)
         
@@ -340,74 +334,23 @@ def setup_sidebar(
             st.session_state.clear_clicked = False
         else:
             key = "user_input"
-        
-        # 初始化命令相关状态
-        if "command_result" not in st.session_state:
-            st.session_state.command_result = None
-            st.session_state.original_text = None
-            st.session_state.command_used = None
 
         # 添加选项卡用于文字输入和图片上传
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
         with tab1:
-            # 增加文本变化计数器来触发更新
-            st.session_state.text_change_counter += 1
-            
             # 使用动态key创建文本框
-            user_input = st.text_area(
-                "", 
-                value=st.session_state.get(key, ""),
-                placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制\n输入'/'可查看特殊命令", 
-                key=key, 
-                height=200
-            )
+            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
             
-            # 检查是否键入了斜杠
-            show_suggestions = check_for_slash(user_input)
-            
-            # 显示命令建议
-            if show_suggestions:
-                st.markdown("<p style='color: #7A00E6; font-size: 14px;'>选择命令:</p>", unsafe_allow_html=True)
-                cmd_col1, cmd_col2, cmd_col3 = st.columns(3)
-                
-                with cmd_col1:
-                    if st.button("🌐 翻译到专业英文", key="cmd_translate"):
-                        # 替换掉斜杠
-                        processed_text = "/翻译到专业英文 "
-                        st.session_state[key] = processed_text
-                        st.rerun()
-                        
-                with cmd_col2:
-                    if st.button("🔍 检查事实", key="cmd_fact"):
-                        processed_text = "/检查事实 "
-                        st.session_state[key] = processed_text
-                        st.rerun()
-                        
-                with cmd_col3:
-                    if st.button("📝 总结", key="cmd_summary"):
-                        processed_text = "/总结 "
-                        st.session_state[key] = processed_text
-                        st.rerun()
-            
-            # 处理斜杠命令
-            if user_input and user_input.strip().startswith("/"):
-                original_text, command_result, command_used = handle_slash_commands(user_input, model_choice, client)
-                if command_result:
-                    st.session_state.command_result = command_result
-                    st.session_state.original_text = original_text
-                    st.session_state.command_used = command_used
-                    # 对相似内容搜索使用不带命令的文本
-                    user_input = original_text
-            
-            # 当用户输入有效内容时查找相似内容
-            if user_input and user_input.strip() != "" and not show_suggestions:
-                # 存储到会话状态以避免在每次重新运行时重新计算
+            # Find similar content when user inputs text
+            if user_input and user_input.strip() != "":
+                # Store in session state to avoid recalculating on every rerun
                 if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
                     with st.spinner("正在查找相似内容..."):
-                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model, top_k=5)
+                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model,top_k = 5)
                         st.session_state.similar_contents = similar_contents
                         st.session_state.last_input = user_input
+
         with tab2:
             # 初始化 session state
             if "previous_file_name" not in st.session_state:
@@ -612,33 +555,14 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.rewrite_text = rewrite_text
     st.session_state.potential_issues = potential_issues
 
-# Modify the display_rewrite_results function to show command results
 def display_rewrite_results():
     st.markdown("<p style='font-size: 14px; font-weight: bold;'>Editable Rewritten Text:</p>", unsafe_allow_html=True)
 
-    # First check if we have a command result to display
-    if 'command_result' in st.session_state and st.session_state.command_result:
-        cmd_title = {
-            "/翻译到专业英文": "英文翻译结果",
-            "/检查事实": "事实检查结果",
-            "/总结": "内容总结"
-        }.get(st.session_state.command_used, "命令结果")
-        
-        st.markdown(f"<p style='font-size: 12px; color: #7A00E6;'>➡️ {cmd_title}</p>", unsafe_allow_html=True)
-        user_editable_text = st.text_area("", st.session_state.command_result, height=300)
-        st.session_state.rewrite_text = user_editable_text
-    
-    # Otherwise show normal rewrite results
-    elif 'rewrite_text' in st.session_state:
+    if 'rewrite_text' in st.session_state:
         user_editable_text = st.text_area("", st.session_state.rewrite_text, height=300)
         st.session_state.rewrite_text = user_editable_text
     else:
         user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'\nTip: You can press Ctrl + A to select all the content, then press Ctrl + C to copy it\n\nContent quality may vary\nIf the result is not satisfactory, the 'Rewrite' button can be clicked again for a new attempt", height=300)
-
-    # Show the original text if a command was used
-    if 'original_text' in st.session_state and st.session_state.original_text and st.session_state.command_used:
-        with st.expander("查看原文", expanded=False):
-            st.text_area("原文", st.session_state.original_text, height=150, disabled=True)
 
     with stylable_container(
         "copy_button",
@@ -722,105 +646,3 @@ def generate_comparison(text, model_choice, client, similar_contents):
     )
     summary = completion.choices[0].message.content.strip()
     return summary
-
-
-
-def check_for_slash(text):
-    """Check if the text contains a slash and return True if it does"""
-    if text and text.strip() == "/":
-        return True
-    return False
-
-
-# Handle slash commands function stays the same
-def handle_slash_commands(text, model_choice, client):
-    """
-    Process slash commands from user input
-    
-    Args:
-        text (str): User input text
-        model_choice (str): Selected model
-        client: API client
-        
-    Returns:
-        tuple: (original_text, command_result, command_used)
-    """
-    # Commands dictionary with functions
-    commands = {
-        "/翻译到专业英文": translate_to_professional_english,
-        "/检查事实": fact_check,
-        "/总结": summarize,
-    }
-    
-    # Check if text contains a slash command
-    for cmd, func in commands.items():
-        if text.startswith(cmd):
-            # Extract the text after the command
-            original_text = text[len(cmd):].strip()
-            if not original_text:
-                return text, "请在命令后输入内容", cmd
-            
-            # Execute the command function
-            result = func(original_text, model_choice, client)
-            return original_text, result, cmd
-    
-    # No command found
-    return text, None, None
-
-# The implementation of the command functions remains the same
-def translate_to_professional_english(text, model_choice, client):
-    """Translate content to professional medical English"""
-    completion = client.chat.completions.create(
-        model=model_choice,
-        messages=[
-            {
-                "role": "system", 
-                "content": "You are a professional medical translator. Translate the given Chinese medical text into professional English medical terminology. Maintain all key information and use appropriate medical jargon where applicable."
-            },
-            {
-                "role": "user", 
-                "content": f"请将以下医学内容翻译成专业的英文:\n\n{text}"
-            }
-        ],
-        temperature=0.1,
-        max_tokens=1000,
-    )
-    return completion.choices[0].message.content.strip()
-
-def fact_check(text, model_choice, client):
-    """Check facts in the medical content"""
-    completion = client.chat.completions.create(
-        model=model_choice,
-        messages=[
-            {
-                "role": "system", 
-                "content": "You are a medical fact-checker. Analyze the given medical content and identify any potential factual errors, exaggerations, or unsubstantiated claims. Format your response as a comprehensive list of findings with objective assessment."
-            },
-            {
-                "role": "user", 
-                "content": f"请检查以下医学内容中的事实性问题:\n\n{text}"
-            }
-        ],
-        temperature=0.1,
-        max_tokens=1000,
-    )
-    return completion.choices[0].message.content.strip()
-
-def summarize(text, model_choice, client):
-    """Summarize the medical content"""
-    completion = client.chat.completions.create(
-        model=model_choice,
-        messages=[
-            {
-                "role": "system", 
-                "content": "You are a medical content summarizer. Create a concise summary of the given medical text while preserving all key findings, methodologies, and conclusions. Focus on the most important clinical and research implications."
-            },
-            {
-                "role": "user", 
-                "content": f"请总结以下医学内容的要点:\n\n{text}"
-            }
-        ],
-        temperature=0.1,
-        max_tokens=1000,
-    )
-    return completion.choices[0].message.content.strip()
