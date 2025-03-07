@@ -306,6 +306,7 @@ def setup_layout(
         model_choice, client, user_input
     )
 
+# Modify the setup_sidebar function to integrate slash commands
 def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
     generate_tag, generate_diseases_tag, rewrite,
@@ -335,13 +336,26 @@ def setup_sidebar(
             st.session_state.clear_clicked = False
         else:
             key = "user_input"
+            
+        # Initialize session state for slash command suggestions
+        if "show_slash_suggestions" not in st.session_state:
+            st.session_state.show_slash_suggestions = False
+            
+        # Initialize session state for command results
+        if "command_result" not in st.session_state:
+            st.session_state.command_result = None
+            st.session_state.original_text = None
+            st.session_state.command_used = None
 
         # 添加选项卡用于文字输入和图片上传
         tab1, tab2 = st.tabs(["文字输入", "图片上传"])
         
         with tab1:
+            # Create a container for the textarea and suggestions
             input_container = st.container()
+            
             with input_container:
+                # 使用动态key创建文本框
                 user_input = st.text_area(
                     "", 
                     placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制\n输入'/'可查看特殊命令", 
@@ -350,6 +364,7 @@ def setup_sidebar(
                     on_change=lambda: check_for_slash(key)
                 )
                 
+                # Check if we should show slash command suggestions
                 if st.session_state.show_slash_suggestions:
                     cmd_col1, cmd_col2, cmd_col3 = st.columns(3)
                     with cmd_col1:
@@ -367,15 +382,24 @@ def setup_sidebar(
                             st.session_state.user_input = "/总结 " + (user_input.replace("/", "") if user_input.startswith("/") else user_input)
                             st.session_state.show_slash_suggestions = False
                             st.rerun()
-
-            # Process slash commands
+            
+            # Process slash commands if present
             if user_input and user_input.strip().startswith("/"):
                 original_text, command_result, command_used = handle_slash_commands(user_input, model_choice, client)
                 if command_result:
                     st.session_state.command_result = command_result
                     st.session_state.original_text = original_text
                     st.session_state.command_used = command_used
-                    user_input = original_text
+                    user_input = original_text  # Use the text without the command for similarity search
+            
+            # Find similar content when user inputs text
+            if user_input and user_input.strip() != "":
+                # Store in session state to avoid recalculating on every rerun
+                if "similar_contents" not in st.session_state or st.session_state.get("last_input", "") != user_input:
+                    with st.spinner("正在查找相似内容..."):
+                        similar_contents = get_similar_content(user_input, embeddings_data, embedding_model, top_k=5)
+                        st.session_state.similar_contents = similar_contents
+                        st.session_state.last_input = user_input
 
         with tab2:
             # 初始化 session state
@@ -581,10 +605,11 @@ def process_rewrite(user_input, institution, department, person, model_choice, c
     st.session_state.rewrite_text = rewrite_text
     st.session_state.potential_issues = potential_issues
 
+# Modify the display_rewrite_results function to show command results
 def display_rewrite_results():
     st.markdown("<p style='font-size: 14px; font-weight: bold;'>Editable Rewritten Text:</p>", unsafe_allow_html=True)
 
-    # Check for command results first
+    # First check if we have a command result to display
     if 'command_result' in st.session_state and st.session_state.command_result:
         cmd_title = {
             "/翻译到专业英文": "英文翻译结果",
@@ -595,11 +620,6 @@ def display_rewrite_results():
         st.markdown(f"<p style='font-size: 12px; color: #7A00E6;'>➡️ {cmd_title}</p>", unsafe_allow_html=True)
         user_editable_text = st.text_area("", st.session_state.command_result, height=300)
         st.session_state.rewrite_text = user_editable_text
-
-        # Show original text in expander
-        if st.session_state.original_text and st.session_state.command_used:
-            with st.expander("查看原文", expanded=False):
-                st.text_area("原文", st.session_state.original_text, height=150, disabled=True)
     
     # Otherwise show normal rewrite results
     elif 'rewrite_text' in st.session_state:
@@ -608,6 +628,11 @@ def display_rewrite_results():
     else:
         user_editable_text = st.text_area("", placeholder="Rewritten text will appear here after clicking 'Rewrite'\nTip: You can press Ctrl + A to select all the content, then press Ctrl + C to copy it\n\nContent quality may vary\nIf the result is not satisfactory, the 'Rewrite' button can be clicked again for a new attempt", height=300)
 
+    # Show the original text if a command was used
+    if 'original_text' in st.session_state and st.session_state.original_text and st.session_state.command_used:
+        with st.expander("查看原文", expanded=False):
+            st.text_area("原文", st.session_state.original_text, height=150, disabled=True)
+            
     with stylable_container(
         "copy_button",
         css_styles="""
@@ -691,28 +716,54 @@ def generate_comparison(text, model_choice, client, similar_contents):
     summary = completion.choices[0].message.content.strip()
     return summary
 
+
+# Add this helper function to check for slash commands
+def check_for_slash(input_key):
+    """Check if the input starts with a slash and show suggestions if it does"""
+    user_input = st.session_state.get(input_key, "")
+    if user_input == "/":
+        st.session_state.show_slash_suggestions = True
+    elif not user_input.startswith("/"):
+        st.session_state.show_slash_suggestions = False
+
+# Add this function to handle slash commands
 def handle_slash_commands(text, model_choice, client):
     """
     Process slash commands from user input
+    
+    Args:
+        text (str): User input text
+        model_choice (str): Selected model
+        client: API client
+        
+    Returns:
+        tuple: (original_text, command_result, command_used)
     """
+    # Commands dictionary with functions
     commands = {
         "/翻译到专业英文": translate_to_professional_english,
         "/检查事实": fact_check,
         "/总结": summarize,
     }
     
+    # Check if text contains a slash command
     for cmd, func in commands.items():
         if text.startswith(cmd):
+            # Extract the text after the command
             original_text = text[len(cmd):].strip()
             if not original_text:
                 return text, "请在命令后输入内容", cmd
             
+            # Execute the command function
             result = func(original_text, model_choice, client)
             return original_text, result, cmd
     
+    # No command found
     return text, None, None
 
+# Add these command functions
 def translate_to_professional_english(text, model_choice, client):
+    """Translate content to professional medical English"""
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
@@ -731,6 +782,7 @@ def translate_to_professional_english(text, model_choice, client):
     return completion.choices[0].message.content.strip()
 
 def fact_check(text, model_choice, client):
+    """Check facts in the medical content"""
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
@@ -749,6 +801,7 @@ def fact_check(text, model_choice, client):
     return completion.choices[0].message.content.strip()
 
 def summarize(text, model_choice, client):
+    """Summarize the medical content"""
     completion = client.chat.completions.create(
         model=model_choice,
         messages=[
@@ -766,10 +819,4 @@ def summarize(text, model_choice, client):
     )
     return completion.choices[0].message.content.strip()
 
-def check_for_slash(input_key):
-    """Check if the input starts with a slash and show suggestions if it does"""
-    user_input = st.session_state.get(input_key, "")
-    if user_input == "/":
-        st.session_state.show_slash_suggestions = True
-    elif not user_input.startswith("/"):
-        st.session_state.show_slash_suggestions = False
+
