@@ -14,6 +14,7 @@ import numpy as np
 import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
+import streamlit.components.v1 as components
 
 # api_key = os.environ.get("GROQ_API_KEY")
 # client = Groq(api_key=api_key)
@@ -272,6 +273,83 @@ def readimg(user_image):
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
 
+# New function for handling slash commands
+def handle_slash_command(text, model_choice, client):
+    """
+    Process slash commands in the text input
+    
+    Args:
+        text (str): User input text
+        model_choice (str): The model to use
+        client: The API client
+        
+    Returns:
+        str: Processed text based on the command
+    """
+    # Extract the command (anything after the slash and before a space)
+    if not text or '/' not in text:
+        return text
+    
+    command_match = re.search(r'/(\w+)\s+(.*)', text)
+    if not command_match:
+        return text
+    
+    command = command_match.group(1).lower()
+    content = command_match.group(2)
+    
+    # Handle different commands
+    if command == "translate":
+        # Translate to English
+        try:
+            response = client.chat.completions.create(
+                model=model_choice,
+                messages=[
+                    {"role": "system", "content": "You are a professional translator. Translate the text to English while preserving the meaning."},
+                    {"role": "user", "content": content}
+                ],
+                temperature=0.1,
+                max_tokens=1000,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"{content}\n\nTranslation error: {str(e)}"
+            
+    elif command == "summarize":
+        # Summarize the text
+        try:
+            response = client.chat.completions.create(
+                model=model_choice,
+                messages=[
+                    {"role": "system", "content": "You are a professional summarizer. Provide a concise summary of the text."},
+                    {"role": "user", "content": content}
+                ],
+                temperature=0.1,
+                max_tokens=500,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"{content}\n\nSummarization error: {str(e)}"
+    
+    elif command == "polish":
+        # Polish the text
+        try:
+            response = client.chat.completions.create(
+                model=model_choice,
+                messages=[
+                    {"role": "system", "content": "You are a professional editor. Improve the text's grammar, clarity, and style while preserving the meaning."},
+                    {"role": "user", "content": content}
+                ],
+                temperature=0.1,
+                max_tokens=1000,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"{content}\n\nPolishing error: {str(e)}"
+    
+    # Add more commands as needed
+    
+    # If command not recognized, return original text
+    return text
 
 def setup_layout(
     topics, diseases, institutions, departments, persons,
@@ -305,6 +383,286 @@ def setup_layout(
     setup_main_page(
         model_choice, client, user_input
     )
+
+# JavaScript for slash command functionality
+def get_slash_command_js():
+    return """
+    <script>
+    function setupSlashCommands(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) {
+            console.error("Textarea not found:", textareaId);
+            return;
+        }
+        
+        // Commands list
+        const commands = [
+            {name: "translate", description: "Translate text to English"},
+            {name: "summarize", description: "Create a concise summary"},
+            {name: "polish", description: "Improve grammar and clarity"}
+        ];
+        
+        // Create dropdown element
+        const dropdown = document.createElement("div");
+        dropdown.className = "slash-command-dropdown";
+        dropdown.style.display = "none";
+        dropdown.style.position = "absolute";
+        dropdown.style.backgroundColor = "white";
+        dropdown.style.border = "1px solid #ccc";
+        dropdown.style.borderRadius = "4px";
+        dropdown.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
+        dropdown.style.zIndex = "1000";
+        dropdown.style.maxHeight = "200px";
+        dropdown.style.overflowY = "auto";
+        dropdown.style.width = "250px";
+        
+        // Insert dropdown after textarea
+        textarea.parentNode.insertBefore(dropdown, textarea.nextSibling);
+        
+        // Event listeners
+        textarea.addEventListener("input", handleInput);
+        textarea.addEventListener("keydown", handleKeyDown);
+        document.addEventListener("click", function(e) {
+            if (e.target !== dropdown && e.target !== textarea) {
+                dropdown.style.display = "none";
+            }
+        });
+        
+        function handleInput(e) {
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            
+            // Check if we should show command suggestions
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const match = textBeforeCursor.match(/(?:^|\\s)\\/([\\w]*)$/);
+            
+            if (match) {
+                const searchTerm = match[1].toLowerCase();
+                const filteredCommands = commands.filter(cmd => 
+                    cmd.name.toLowerCase().includes(searchTerm)
+                );
+                
+                if (filteredCommands.length > 0) {
+                    showDropdown(match[0], filteredCommands);
+                } else {
+                    dropdown.style.display = "none";
+                }
+            } else {
+                dropdown.style.display = "none";
+            }
+        }
+        
+        function handleKeyDown(e) {
+            if (dropdown.style.display === "none") return;
+            
+            const activeItem = dropdown.querySelector(".active");
+            
+            switch(e.key) {
+                case "ArrowDown":
+                    e.preventDefault();
+                    if (!activeItem) {
+                        dropdown.querySelector(".command-item").classList.add("active");
+                    } else {
+                        activeItem.classList.remove("active");
+                        const next = activeItem.nextElementSibling || dropdown.querySelector(".command-item");
+                        next.classList.add("active");
+                    }
+                    break;
+                case "ArrowUp":
+                    e.preventDefault();
+                    if (!activeItem) {
+                        const items = dropdown.querySelectorAll(".command-item");
+                        items[items.length - 1].classList.add("active");
+                    } else {
+                        activeItem.classList.remove("active");
+                        const prev = activeItem.previousElementSibling || dropdown.querySelector(".command-item:last-child");
+                        prev.classList.add("active");
+                    }
+                    break;
+                case "Enter":
+                    if (activeItem) {
+                        e.preventDefault();
+                        selectCommand(activeItem.dataset.command);
+                    }
+                    break;
+                case "Escape":
+                    dropdown.style.display = "none";
+                    break;
+            }
+        }
+        
+        function showDropdown(matchText, filteredCommands) {
+            // Position dropdown
+            const textareaRect = textarea.getBoundingClientRect();
+            const cursorPosition = getCursorPosition(textarea);
+            
+            dropdown.style.left = cursorPosition.left + "px";
+            dropdown.style.top = (cursorPosition.top + 20) + "px";
+            
+            // Clear previous options
+            dropdown.innerHTML = "";
+            
+            // Add command options
+            filteredCommands.forEach(cmd => {
+                const item = document.createElement("div");
+                item.className = "command-item";
+                item.dataset.command = cmd.name;
+                item.style.padding = "8px 12px";
+                item.style.cursor = "pointer";
+                item.style.display = "flex";
+                item.style.alignItems = "center";
+                
+                const iconSpan = document.createElement("span");
+                iconSpan.style.marginRight = "8px";
+                iconSpan.style.color = "#7A00E6";
+                iconSpan.textContent = "/";
+                item.appendChild(iconSpan);
+                
+                const contentDiv = document.createElement("div");
+                contentDiv.style.display = "flex";
+                contentDiv.style.flexDirection = "column";
+                
+                const nameSpan = document.createElement("span");
+                nameSpan.style.fontWeight = "bold";
+                nameSpan.textContent = cmd.name;
+                contentDiv.appendChild(nameSpan);
+                
+                const descSpan = document.createElement("span");
+                descSpan.style.fontSize = "12px";
+                descSpan.style.color = "#666";
+                descSpan.textContent = cmd.description;
+                contentDiv.appendChild(descSpan);
+                
+                item.appendChild(contentDiv);
+                
+                item.addEventListener("mouseover", function() {
+                    dropdown.querySelectorAll(".active").forEach(el => el.classList.remove("active"));
+                    item.classList.add("active");
+                });
+                
+                item.addEventListener("click", function() {
+                    selectCommand(cmd.name);
+                });
+                
+                dropdown.appendChild(item);
+            });
+            
+            // Show dropdown
+            dropdown.style.display = "block";
+        }
+        
+        function selectCommand(commandName) {
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            
+            // Find the slash that started the command
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const match = textBeforeCursor.match(/(?:^|\\s)\\/([\\w]*)$/);
+            
+            if (match) {
+                const matchStart = textBeforeCursor.lastIndexOf(match[0]);
+                const beforeCommand = text.substring(0, matchStart);
+                const afterCursor = text.substring(cursorPos);
+                
+                // Replace the command with the selected one
+                textarea.value = beforeCommand + "/" + commandName + " " + afterCursor;
+                
+                // Put cursor after the command
+                const newCursorPos = (beforeCommand + "/" + commandName + " ").length;
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Hide dropdown
+                dropdown.style.display = "none";
+                
+                // Focus back on textarea
+                textarea.focus();
+            }
+        }
+        
+        function getCursorPosition(element) {
+            // Create a range
+            const range = document.createRange();
+            const selection = window.getSelection();
+            
+            // Get caret position
+            if (selection.rangeCount > 0) {
+                selection.removeAllRanges();
+            }
+            
+            let position = {};
+            
+            // We need to add a dummy span to find the position
+            const dummy = document.createElement("span");
+            dummy.textContent = "|";
+            
+            // Get cursor position in textarea
+            const cursorPos = element.selectionStart;
+            let content = element.value;
+            
+            // Update textarea temporarily
+            element.value = content.substring(0, cursorPos) + dummy.textContent + content.substring(cursorPos);
+            
+            // Create a mirror div to measure
+            const mirror = document.createElement("div");
+            mirror.style.position = "absolute";
+            mirror.style.left = "-9999px";
+            mirror.style.top = "-9999px";
+            mirror.style.width = getComputedStyle(element).width;
+            mirror.style.height = getComputedStyle(element).height;
+            mirror.style.padding = getComputedStyle(element).padding;
+            mirror.style.border = getComputedStyle(element).border;
+            mirror.style.fontFamily = getComputedStyle(element).fontFamily;
+            mirror.style.fontSize = getComputedStyle(element).fontSize;
+            mirror.style.lineHeight = getComputedStyle(element).lineHeight;
+            mirror.style.whiteSpace = "pre-wrap";
+            mirror.style.wordWrap = "break-word";
+            mirror.style.boxSizing = "border-box";
+            
+            document.body.appendChild(mirror);
+            
+            // Set the content to the mirror
+            mirror.textContent = content.substring(0, cursorPos);
+            const span = document.createElement("span");
+            span.textContent = "|";
+            mirror.appendChild(span);
+            
+            // Get position
+            const spanRect = span.getBoundingClientRect();
+            const textareaRect = element.getBoundingClientRect();
+            
+            position = {
+                top: spanRect.top - textareaRect.top + element.scrollTop,
+                left: spanRect.left - textareaRect.left + element.scrollLeft
+            };
+            
+            // Clean up
+            document.body.removeChild(mirror);
+            element.value = content; // Restore original content
+            
+            return position;
+        }
+    }
+    
+    // Add some custom styles
+    const style = document.createElement("style");
+    style.textContent = `
+        .command-item:hover, .command-item.active {
+            background-color: #f5f0ff;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Setup the functionality with a delay to ensure DOM is ready
+    setTimeout(() => {
+        const textareas = document.querySelectorAll("textarea");
+        textareas.forEach(textarea => {
+            if (textarea.id) {
+                setupSlashCommands(textarea.id);
+            }
+        });
+    }, 1000);
+    </script>
+    """
 
 def setup_sidebar(
     topics, primary_topics_list, institutions, departments, persons,
@@ -340,7 +698,20 @@ def setup_sidebar(
         
         with tab1:
             # 使用动态key创建文本框
-            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制", key=key, height=200)
+            user_input = st.text_area("", placeholder="请输入内容\n提示：您可以按下 Ctrl + A 全选内容，接着按下 Ctrl + C 复制\n键入 / 可使用快捷命令", key=key, height=200)
+            
+            # Add slash command JavaScript
+            components.html(get_slash_command_js(), height=0)
+            
+            # Process slash commands if present
+            if user_input and '/' in user_input:
+                api_key = os.environ.get("GROQ_API_KEY")
+                command_client = Groq(api_key=api_key)
+                processed_input = handle_slash_command(user_input, model_choice, command_client)
+                if processed_input != user_input:
+                    st.session_state[key] = processed_input
+                    user_input = processed_input
+                    st.experimental_rerun()
             
             # Find similar content when user inputs text
             if user_input and user_input.strip() != "":
@@ -389,14 +760,6 @@ def setup_sidebar(
                 st.text_area("提取的文字", st.session_state.get("extracted_text", ""), height=200, key="extracted_text_display")
 
         # 显示相似内容
-        # if "similar_contents" in st.session_state and st.session_state.similar_contents:
-        #     with st.expander("相似内容 (Top 5)"):
-        #         for i, item in enumerate(st.session_state.similar_contents):
-        #             st.markdown(f"**相似度: {item['similarity']:.2f}**")
-        #             st.markdown(f"```\n{item['content']}\n```")
-        #             if i < len(st.session_state.similar_contents) - 1:
-        #                 st.markdown("---")
-        
         if "similar_contents" in st.session_state and st.session_state.similar_contents:
             with st.expander("相似内容 (Top 5)", expanded=True):
                 # 添加比较结果显示
