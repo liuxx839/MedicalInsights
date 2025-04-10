@@ -17,8 +17,8 @@ from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
-from dag_analysis import DAGRelations
-from data_description import DataDescription
+from dagrelation import DAGRelations
+from datadescription import DataDescription
 
 def create_mermaid_html_from_edges(dag_edges):
     """
