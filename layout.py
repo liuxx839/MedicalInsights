@@ -249,41 +249,60 @@ def readimg(user_image):
         image_to_process = user_image.copy()
         base64_image = encode_image(image_to_process)
         
-        response = client_vision.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",  # Fill in the model name to be called
-            messages=[
-              {
-                "role": "user",
-                "content": [
-                  {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": base64_image
-                    }
-                  },
-                  {
-                    "type": "text",
-                    "text": "提取图片里的文字"
-                  }
-                ]
-              }
-            ]
-        )
-        return(response.choices[0].message.content)
-        # response = client_vision.responses.create(
-        #     model=model_choice_research,
-        #     input=[{
+        # response = client_vision.chat.completions.create(
+        #     model="meta-llama/llama-4-scout-17b-16e-instruct",  # Fill in the model name to be called
+        #     messages=[
+        #       {
         #         "role": "user",
         #         "content": [
-        #             {"type": "input_text", "text": "提取图片里的文字"},
-        #             {
-        #                 "type": "input_image",
-        #                 "image_url": base64_image,
-        #             },
-        #         ],
-        #     }],
+        #           {
+        #             "type": "image_url",
+        #             "image_url": {
+        #                 "url": base64_image
+        #             }
+        #           },
+        #           {
+        #             "type": "text",
+        #             "text": "提取图片里的文字"
+        #           }
+        #         ]
+        #       }
+        #     ]
         # )
-        # return response.output_text
+        # return(response.choices[0].message.content)
+        response = client_vision.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "提取图片里的文字"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": base64_image
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=1,
+            max_completion_tokens=1024,
+            top_p=1,
+            stream=True,
+            stop=None,
+        )
+        
+        extracted_text = ""
+        for chunk in response:
+            text_chunk = chunk.choices[0].delta.content or ""
+            extracted_text += text_chunk
+            print(text_chunk, end="")
+        
+        return extracted_text
 
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
