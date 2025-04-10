@@ -11,3 +11,4 @@ sentence-transformers
 numpy
 scikit-learn
 python-docx
+statsmodels
