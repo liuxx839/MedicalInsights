@@ -25,7 +25,7 @@ def setup_client():
     if model_choice in ["llama3-70b-8192", "llama-3.1-70b-versatile", "llama-3.1-8b-instant","llama-3.3-70b-versatile","deepseek-r1-distill-llama-70b","qwen-qwq-32b"]:
         api_key = os.environ.get("GROQ_API_KEY")
         client = Groq(api_key=api_key)
-    elif model_choice in ["glm-4-flash", "glm-4-plus"]
+    elif model_choice in ["glm-4-flash", "glm-4-plus"]:
         api_key = os.environ.get("ZHIPU_API_KEY")
         client = ZhipuAI(api_key=api_key)
     elif model_choice in ["hunyuan-lite", "hunyuan-pro"]:
