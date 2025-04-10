@@ -14,11 +14,13 @@ import numpy as np
 import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
+from functions import setup_client
 
 # api_key = os.environ.get("GROQ_API_KEY")
-# client = Groq(api_key=api_key)
-api_key_vision = os.environ.get("ZHIPU_API_KEY")
-client_vision = ZhipuAI(api_key=api_key_vision)
+# # client = Groq(api_key=api_key)
+# api_key_vision = os.environ.get("ZHIPU_API_KEY")
+# client_vision = ZhipuAI(api_key=api_key_vision)
+model_choice_research, client_vision = setup_client(model_choice = 'gemini-2.0-flash')
 
 ## Load embedding model
 # @st.cache_resource
@@ -248,7 +250,7 @@ def readimg(user_image):
         base64_image = encode_image(image_to_process)
         
         response = client_vision.chat.completions.create(
-            model="glm-4v-plus",  # Fill in the model name to be called
+            model=model_choice_research,  # Fill in the model name to be called
             messages=[
               {
                 "role": "user",
