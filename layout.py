@@ -263,7 +263,7 @@ def readimg(user_image):
                   },
                   {
                     "type": "text",
-                    "text": "提取图片里的文字"
+                    "text": "提取图片里的文字，直接返回答案即可"
                   }
                 ]
               }
