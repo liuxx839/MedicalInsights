@@ -18,7 +18,81 @@ from io import BytesIO
 from dag_analysis import DAGRelations
 from data_description import DataDescription
 
+def create_mermaid_html_from_edges(dag_edges):
+    """
+    Create a Mermaid flowchart HTML from a list of edges.
+    
+    Parameters:
+    dag_edges (list): List of tuples representing edges. Each tuple can be:
+                     - ('var1', 'var2') for a single edge
+                     - (['var1', 'var2'], 'var3') for multiple sources to one target
+    
+    Returns:
+    str: HTML code with embedded Mermaid flowchart
+    """
+    mermaid_code = ['flowchart TD']
+    
+    for edge in dag_edges:
+        if isinstance(edge[0], list):
+            # Handle multiple sources to one target
+            source_vars = edge[0]
+            target_var = edge[1]
+            
+            # Create individual connections for each source to target
+            for source_var in source_vars:
+                mermaid_code.append(f'    {source_var} --> {target_var}')
+        else:
+            # Simple one-to-one edge
+            source_var = edge[0]
+            target_var = edge[1]
+            mermaid_code.append(f'    {source_var} --> {target_var}')
+    
+    # Join all lines with newlines
+    mermaid_code_str = '\n'.join(mermaid_code)
+    
+    # Create the HTML with the embedded Mermaid code and zoom controls
+    mermaid_html = f"""
+<div id="mermaid-container" style="width:100%; height:100%; position:relative;">
+    <div class="mermaid" id="mermaid-diagram">
+    {mermaid_code_str}
+    </div>
+    
+    <div style="position:absolute; top:10px; right:10px; background:white; padding:5px; border:1px solid #ccc; border-radius:5px;">
+        <button onclick="zoomIn()" style="margin-right:5px;">➕</button>
+        <button onclick="zoomOut()">➖</button>
+        <button onclick="resetZoom()" style="margin-left:5px;">🔄</button>
+    </div>
+</div>
 
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({{ startOnLoad: true }});
+    
+    window.currentZoom = 1;
+    
+    window.zoomIn = function() {{
+        window.currentZoom += 0.1;
+        document.getElementById('mermaid-diagram').style.transform = `scale(${{window.currentZoom}})`;
+        document.getElementById('mermaid-diagram').style.transformOrigin = 'top left';
+    }};
+    
+    window.zoomOut = function() {{
+        if (window.currentZoom > 0.5) {{
+            window.currentZoom -= 0.1;
+            document.getElementById('mermaid-diagram').style.transform = `scale(${{window.currentZoom}})`;
+            document.getElementById('mermaid-diagram').style.transformOrigin = 'top left';
+        }}
+    }};
+    
+    window.resetZoom = function() {{
+        window.currentZoom = 1;
+        document.getElementById('mermaid-diagram').style.transform = 'scale(1)';
+    }};
+</script>
+"""
+    
+    return mermaid_html
+    
 def create_word_document(qa_response, fact_check_result=None):
     """
     创建包含QA响应和事实核查结果的Word文档，支持Markdown标题转换为Word样式
@@ -603,7 +677,7 @@ def main():
     
     model_choice, client = setup_client()
     # Create the page selection in sidebar
-    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis")
+    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis"])
     
     if page == "Medical Insights Copilot":
         st.markdown("""<h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Medical Insights Copilot</h1>
