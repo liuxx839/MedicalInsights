@@ -14,6 +14,7 @@ import pandas as pd
 import json
 import time
 import ast
+import io
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
