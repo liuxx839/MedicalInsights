@@ -13,6 +13,7 @@ from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
 import json
 import time
+import ast
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
