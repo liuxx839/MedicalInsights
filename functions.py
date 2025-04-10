@@ -25,6 +25,12 @@ def setup_client(model_choice="llama3-70b-8192"):
         api_id = os.environ.get("TENCENT_SECRET_ID")
         api_key = os.environ.get("TENCENT_SECRET_KEY")
         client = Hunyuan(api_id=api_id, api_key=api_key)
+    elif "gemini" in model_choice:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta/"
+        )
     return model_choice, client
 
 def generate_tag(text, model_choice, client):
