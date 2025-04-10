@@ -681,11 +681,12 @@ def setup_spreadsheet_analysis():
 def main():
     st.set_page_config(layout="wide")
     
-    model_choice, client = setup_client()
+   
     # Create the page selection in sidebar
     page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis"])
     
     if page == "Medical Insights Copilot":  
+        model_choice, client = setup_client()
         setup_layout(
             topics, diseases, institutions, departments, persons,
             primary_topics_list, primary_diseases_list,
