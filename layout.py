@@ -258,7 +258,7 @@ def readimg(user_image):
                   {
                     "type": "image_url",
                     "image_url": {
-                        "url": base64_image
+                        "url": f"data:image/jpeg;base64,{base64_image}"
                     }
                   },
                   {
@@ -269,7 +269,7 @@ def readimg(user_image):
               }
             ]
         )
-        return(response.choices[0].message)
+        return(response.choices[0].message.content)
 
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
