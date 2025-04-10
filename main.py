@@ -22,7 +22,7 @@ from io import BytesIO
 from dagrelation import DAGRelations
 from datadescription import DataDescription
 
-model_choice_research, client_research = setup_client(model_choice = 'glm-4-plus')
+model_choice_research, client_research = setup_client(model_choice = 'glm-4-flash')
  
 def create_mermaid_html_from_edges(dag_edges):
     """
