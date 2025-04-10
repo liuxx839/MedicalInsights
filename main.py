@@ -20,7 +20,7 @@ from io import BytesIO
 from dagrelation import DAGRelations
 from datadescription import DataDescription
 
-model_choice_research, client_research = setup_client(model_choice="qwen-qwq-32b")
+model_choice_research, client_research = setup_client()
  
 def create_mermaid_html_from_edges(dag_edges):
     """
