@@ -10,4 +10,4 @@ json-repair
 sentence-transformers
 numpy
 scikit-learn
-
+python-docx
