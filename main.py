@@ -15,6 +15,7 @@ import json
 import time
 import ast
 import io
+from openai import OpenAI
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
