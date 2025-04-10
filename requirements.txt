@@ -12,3 +12,4 @@ numpy
 scikit-learn
 python-docx
 statsmodels
+openpyxl
