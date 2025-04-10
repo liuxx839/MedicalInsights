@@ -14,6 +14,8 @@ import pandas as pd
 import json
 import time
 from docx import Document
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 from dag_analysis import DAGRelations
 from data_description import DataDescription
