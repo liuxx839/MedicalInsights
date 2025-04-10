@@ -273,7 +273,7 @@ def setup_spreadsheet_analysis():
                 st.dataframe(df)
                 
                 # 保存sample数据到session state
-                st.session_state.sample_data = df.head(10).to_dict()
+                st.session_state.sample_data = df.sample(10).to_dict()
                 
             except Exception as e:
                 st.error(f"处理文件时出错: {str(e)}")
