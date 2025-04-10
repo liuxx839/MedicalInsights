@@ -681,21 +681,17 @@ def main():
     # Create the page selection in sidebar
     page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis"])
     
-    if page == "Medical Insights Copilot":
-        st.markdown("""<h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Medical Insights Copilot</h1>
-        <h6 style='text-align: center; font-size: 12px;'>改写的结果及反馈将呈现在下方，请根据自己的判断进行使用</h6><br><br><br>""", unsafe_allow_html=True)
-        user_input = setup_sidebar()
-        setup_main_page(model_choice, client, user_input)
+    if page == "Medical Insights Copilot":  
+        setup_layout(
+            topics, diseases, institutions, departments, persons,
+            primary_topics_list, primary_diseases_list,
+            generate_tag, generate_diseases_tag, rewrite,
+            prob_identy, generate_structure_data,
+            model_choice, client
+        )
     elif page == "Spreadsheet Analysis":
             setup_spreadsheet_analysis()
-    
-    setup_layout(
-        topics, diseases, institutions, departments, persons,
-        primary_topics_list, primary_diseases_list,
-        generate_tag, generate_diseases_tag, rewrite,
-        prob_identy, generate_structure_data,
-        model_choice, client
-    )
+
 
 if __name__ == "__main__":
     main()
