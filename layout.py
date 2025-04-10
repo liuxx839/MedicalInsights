@@ -16,11 +16,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 from functions import setup_client
 
-# api_key = os.environ.get("GROQ_API_KEY")
-# # client = Groq(api_key=api_key)
-api_key_vision = os.environ.get("ZHIPU_API_KEY")
+api_key_vision = os.environ.get("GROQ_API_KEY")
+client_vision = Groq(api_key=api_key)
+api_key_embed = os.environ.get("ZHIPU_API_KEY")
 # client_vision = ZhipuAI(api_key=api_key_vision)
-model_choice_research, client_vision = setup_client(model_choice = 'gemini-2.0-flash')
+# model_choice_research, client_vision = setup_client(model_choice = 'gemini-2.0-flash')
 
 ## Load embedding model
 # @st.cache_resource
@@ -29,7 +29,7 @@ model_choice_research, client_vision = setup_client(model_choice = 'gemini-2.0-f
 
 @st.cache_resource
 def load_embedding_model():
-    return ZhipuAI(api_key=api_key_vision)
+    return ZhipuAI(api_key=api_key_embed)
 
 # @st.cache_resource
 # def load_embedding_model():
@@ -249,41 +249,41 @@ def readimg(user_image):
         image_to_process = user_image.copy()
         base64_image = encode_image(image_to_process)
         
-        # response = client_vision.chat.completions.create(
-        #     model=model_choice_research,  # Fill in the model name to be called
-        #     messages=[
-        #       {
-        #         "role": "user",
-        #         "content": [
-        #           {
-        #             "type": "image_url",
-        #             "image_url": {
-        #                 "url": base64_image
-        #             }
-        #           },
-        #           {
-        #             "type": "text",
-        #             "text": "提取图片里的文字"
-        #           }
-        #         ]
-        #       }
-        #     ]
-        # )
-        # return(response.choices[0].message.content)
-        response = client_vision.responses.create(
-            model=model_choice_research,
-            input=[{
+        response = client_vision.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",  # Fill in the model name to be called
+            messages=[
+              {
                 "role": "user",
                 "content": [
-                    {"type": "input_text", "text": "提取图片里的文字"},
-                    {
-                        "type": "input_image",
-                        "image_url": base64_image,
-                    },
-                ],
-            }],
+                  {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": base64_image
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": "提取图片里的文字"
+                  }
+                ]
+              }
+            ]
         )
-        return response.output_text
+        return(response.choices[0].message.content)
+        # response = client_vision.responses.create(
+        #     model=model_choice_research,
+        #     input=[{
+        #         "role": "user",
+        #         "content": [
+        #             {"type": "input_text", "text": "提取图片里的文字"},
+        #             {
+        #                 "type": "input_image",
+        #                 "image_url": base64_image,
+        #             },
+        #         ],
+        #     }],
+        # )
+        # return response.output_text
 
     except Exception as e:
         raise Exception(f"Error processing image with Groq API: {str(e)}")
