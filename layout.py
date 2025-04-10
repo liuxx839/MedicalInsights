@@ -17,7 +17,7 @@ from sentence_transformers import SentenceTransformer
 from functions import setup_client
 
 api_key_vision = os.environ.get("GROQ_API_KEY")
-client_vision = Groq(api_key=api_key)
+client_vision = Groq(api_key=api_key_vision)
 api_key_embed = os.environ.get("ZHIPU_API_KEY")
 # client_vision = ZhipuAI(api_key=api_key_vision)
 # model_choice_research, client_vision = setup_client(model_choice = 'gemini-2.0-flash')
