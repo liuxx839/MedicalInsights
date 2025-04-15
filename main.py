@@ -724,10 +724,6 @@ def setup_sales_forecasting():
     if 'training_end_date_str' not in st.session_state:
         st.session_state.training_end_date_str = None
     
-    st.set_page_config(page_title="Sales Forecasting App", layout="wide")
-    
-    # App title and description
-    st.title("Sales Forecasting Application")
     st.markdown("""
     This app helps you forecast sales or other time series data using Facebook Prophet.
     Upload your Excel file, configure the settings, and get predictions for future periods.
