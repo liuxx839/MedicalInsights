@@ -13,3 +13,6 @@ scikit-learn
 python-docx
 statsmodels
 openpyxl
+prophet
+plotly
+
