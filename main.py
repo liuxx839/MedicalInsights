@@ -23,6 +23,15 @@ from io import BytesIO
 from dagrelation import DAGRelations
 from datadescription import DataDescription
 
+# Add at the top of the file with other imports
+import numpy as np
+from datetime import datetime
+from prophet import Prophet
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import base64
+from io import BytesIO
+
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
  
 def create_mermaid_html_from_edges(dag_edges):
@@ -681,13 +690,453 @@ def setup_spreadsheet_analysis():
                     file_name=f"data_analysis_report_{time.strftime('%Y%m%d_%H%M%S')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+
+# Add this function before the main() function
+def setup_sales_forecasting():
+    st.markdown(
+        """
+    <h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Sales Forecasting Application</h1>
+    <h6 style='text-align: center; font-size: 12px;'>Upload your Excel file to forecast sales or other time series data</h6>
+    <br><br><br>
+    """,
+        unsafe_allow_html=True,
+    )
+    
+    # Initialize session state for storing results between interactions
+    if 'forecast_df' not in st.session_state:
+        st.session_state.forecast_df = None
+    if 'all_groups' not in st.session_state:
+        st.session_state.all_groups = []
+    if 'has_forecast' not in st.session_state:
+        st.session_state.has_forecast = False
+    if 'target_column' not in st.session_state:
+        st.session_state.target_column = None
+    if 'original_filename' not in st.session_state:
+        st.session_state.original_filename = None
+
+    # App description
+    st.markdown("""
+    This app helps you forecast sales or other time series data using Facebook Prophet.
+    Upload your Excel file, configure the settings, and get predictions for future periods.
+    """)
+
+    # File uploader
+    uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"], key="forecast_file_uploader")
+
+    if uploaded_file is not None:
+        # Store original filename
+        if st.session_state.original_filename is None:
+            st.session_state.original_filename = uploaded_file.name.split('.')[0]
+            
+        # Load the file and display sheet selection
+        excel_file = pd.ExcelFile(uploaded_file)
+        sheet_name = st.selectbox("Select Sheet", excel_file.sheet_names)
+        
+        # Read the selected sheet
+        df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
+        
+        # Display data preview
+        st.subheader("Data Preview")
+        st.dataframe(df.head())
+        
+        # Basic data info
+        st.subheader("Dataset Information")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"Number of rows: {df.shape[0]}")
+        with col2:
+            st.write(f"Number of columns: {df.shape[1]}")
+        
+        # Column selection and configuration
+        st.subheader("Configure Forecasting Parameters")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Date column selection
+            date_column_options = df.columns.tolist()
+            date_column = st.selectbox("Select Date/Month Column", date_column_options)
+            
+            # Date format selection
+            date_format_options = [
+                "%Y%m", "%Y-%m", "%b %Y", "%B %Y", 
+                "%Y%m%d", "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y"
+            ]
+            date_format = st.selectbox("Select Date Format", date_format_options)
+            
+            # Target column (to be predicted)
+            numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
+            target_column = st.selectbox("Select Target Column to Forecast", numeric_columns)
+            st.session_state.target_column = target_column
+            
+            # Start date for training
+            min_date = pd.to_datetime("2020-01-01")  # Default minimum date
+            max_date = datetime.now()
+            start_date = st.date_input("Training Start Date", 
+                                      value=pd.to_datetime("2022-01-01"),
+                                      min_value=min_date,
+                                      max_value=max_date)
+        
+        with col2:
+            # Grouping columns (multi-select)
+            all_columns = df.columns.tolist()
+            grouping_columns = st.multiselect("Select Columns for Grouping (Optional)", all_columns)
+            
+            # Forecast horizon
+            forecast_years = st.number_input("Forecast Horizon (Years)", min_value=1, max_value=10, value=3)
+            
+            # Add a forecast end date input
+            current_date = datetime.now()
+            default_end_date = current_date.replace(day=1) + pd.DateOffset(years=forecast_years) - pd.DateOffset(days=1)
+            end_date = st.date_input("Forecast End Date", 
+                                    value=default_end_date,
+                                    min_value=start_date)
+            
+            # Prophet parameters
+            interval_width = st.slider("Confidence Interval Width", min_value=0.5, max_value=0.95, value=0.6, step=0.05)
+        
+        # Run forecast button
+        if st.button("Run Forecast") or st.session_state.has_forecast:
+            if not st.session_state.has_forecast:
+                try:
+                    # Progress bar
+                    progress_bar = st.progress(0)
+                    
+                    # Copy the dataframe to avoid modifying the original
+                    df_copy = df.copy()
+                    
+                    # Process date column
+                    st.info("Processing date column...")
+                    try:
+                        df_copy['date'] = pd.to_datetime(df_copy[date_column].astype(str), format=date_format)
+                    except:
+                        df_copy['date'] = pd.to_datetime(df_copy[date_column].astype(str))
+                        
+                    # Store the original date format from the column
+                    original_date_values = df_copy[date_column].copy()
+                        
+                    progress_bar.progress(10)
+                    
+                    # Create grouping key if group columns are selected
+                    if grouping_columns:
+                        st.info("Creating group combinations...")
+                        df_copy['group'] = df_copy[grouping_columns[0]].astype(str)
+                        for col in grouping_columns[1:]:
+                            df_copy['group'] += '_' + df_copy[col].astype(str)
+                    else:
+                        # If no grouping is selected, create a single group
+                        df_copy['group'] = 'all_data'
+                        
+                    progress_bar.progress(20)
+                    
+                    # Get current date and calculate end date for forecasting
+                    current_date = datetime.now()
+                    end_date_str = end_date.strftime('%Y-%m-%d')
+                    
+                    # Create complete date and group combinations
+                    st.info("Creating complete date-group combinations...")
+                    all_dates = pd.date_range(start=df_copy['date'].min(), end=end_date_str, freq='MS')
+                    all_groups = df_copy['group'].unique()
+                    st.session_state.all_groups = all_groups.tolist()
+                    
+                    complete_df = pd.DataFrame([(date, group) for date in all_dates for group in all_groups],
+                                              columns=['date', 'group'])
+                    
+                    # Merge with original data
+                    df_copy = pd.merge(complete_df, df_copy, on=['date', 'group'], how='left')
+                    
+                    # Fill missing values for target column with 0
+                    df_copy[target_column] = df_copy[target_column].fillna(0)
+                    
+                    # Forward fill other columns within groups
+                    if grouping_columns:
+                        for col in grouping_columns:
+                            df_copy[col] = df_copy.groupby('group')[col].ffill().bfill()
+                            
+                    progress_bar.progress(40)
+                    
+                    # Sort data
+                    df_copy = df_copy.sort_values(by=['group', 'date'], ascending=[True, True])
+                    
+                    # Convert start_date to string format
+                    start_date_str = start_date.strftime("%Y-%m-%d")
+                    current_date_str = current_date.strftime("%Y-%m-%d")
+                    
+                    # Run Prophet forecast for each group
+                    st.info("Running forecasts for each group...")
+                    forecasts = {}
+                    total_groups = len(all_groups)
+                    
+                    # Import Prophet here for delayed loading
+                    from prophet import Prophet
+                    
+                    for i, group in enumerate(all_groups):
+                        # Update progress based on group progress
+                        progress_value = 40 + (i / total_groups * 50)
+                        progress_bar.progress(int(progress_value))
+                        
+                        # Filter data for this group - using the start_date parameter
+                        group_data = df_copy[(df_copy['group'] == group) & 
+                                           (df_copy['date'] >= start_date_str) &
+                                           (df_copy['date'] <= current_date_str)].copy()
+                        
+                        group_data = group_data.rename(columns={'date': 'ds', target_column: 'y'})
+                        
+                        # Fit Prophet model
+                        model = Prophet(interval_width=interval_width, uncertainty_samples=1000, mcmc_samples=300)
+                        # model = Prophet(interval_width=interval_width)
+
+                        try:
+                            model.fit(group_data[['ds', 'y']])
+                            
+                            # Calculate periods based on selected end date
+                            end_date_ts = pd.Timestamp(end_date_str)
+                            current_date_ts = pd.Timestamp(current_date_str)
+                            months_diff = (end_date_ts.year - current_date_ts.year) * 12 + end_date_ts.month - current_date_ts.month
+                            
+                            # Make forecast
+                            future = model.make_future_dataframe(periods=months_diff, freq='MS')
+                            forecast = model.predict(future)
+                            
+                            forecasts[group] = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+                        except Exception as e:
+                            st.warning(f"Could not forecast for group {group}: {str(e)}")
+                            # Create empty forecast data for this group
+                            forecasts[group] = pd.DataFrame({
+                                'ds': all_dates,
+                                'yhat': np.zeros(len(all_dates)),
+                                'yhat_lower': np.zeros(len(all_dates)),
+                                'yhat_upper': np.zeros(len(all_dates))
+                            })
+                    
+                    progress_bar.progress(90)
+                    
+                    # Write forecasts back to the dataframe using direct array assignment
+                    st.info("Combining results...")
+                    for group, forecast in forecasts.items():
+                        # Use date matching instead of direct array assignment
+                        for i, row in forecast.iterrows():
+                            forecast_date = row['ds']
+                            # Match both group and date
+                            mask = (df_copy['group'] == group) & (df_copy['date'] == forecast_date)
+                            # Assign forecast values
+                            df_copy.loc[mask, 'forecast'] = row['yhat']
+                            df_copy.loc[mask, 'forecast_lower'] = row['yhat_lower']
+                            df_copy.loc[mask, 'forecast_upper'] = row['yhat_upper']
+                    
+                    # Format dates in the original date column according to the selected format
+                    # This preserves the original date format while extending to future dates
+                    df_copy[date_column] = df_copy['date'].dt.strftime(date_format)
+                    
+                    # Store results in session state
+                    st.session_state.forecast_df = df_copy
+                    st.session_state.has_forecast = True
+                    
+                    progress_bar.progress(100)
+                    st.success("Forecast completed successfully!")
+                    
+                except Exception as e:
+                    st.error(f"An error occurred during forecasting: {str(e)}")
+                    st.error("Please check your data and settings and try again.")
+            
+            # Display results if available in session state
+            if st.session_state.has_forecast and st.session_state.forecast_df is not None:
+                # Display results
+                st.subheader("Forecast Results")
+                st.dataframe(st.session_state.forecast_df.head(20))
                 
+                # Create download link for the forecast
+                st.subheader("Download Complete Forecast")
+                
+                # Get the original filename for downloads
+                filename_base = st.session_state.original_filename
+                
+                # CSV download with custom filename
+                csv = st.session_state.forecast_df.to_csv(index=False)
+                b64 = base64.b64encode(csv.encode()).decode()
+                csv_filename = f"{filename_base}_forecast.csv"
+                href = f'<a href="data:file/csv;base64,{b64}" download="{csv_filename}">Download CSV File</a>'
+                st.markdown(href, unsafe_allow_html=True)
+                
+                # Excel download with custom filename
+                buffer = BytesIO()
+                st.session_state.forecast_df.to_excel(buffer, index=False)
+                buffer.seek(0)
+                b64_excel = base64.b64encode(buffer.read()).decode()
+                excel_filename = f"{filename_base}_forecast.xlsx"
+                href_excel = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="{excel_filename}">Download Excel File</a>'
+                st.markdown(href_excel, unsafe_allow_html=True)
+                
+                # Visualization section
+                st.subheader("Forecast Visualizations")
+                
+                # Create dropdown for group selection
+                selected_group = st.selectbox("Select group to visualize", st.session_state.all_groups)
+                
+                # Plot the selected group
+                selected_data = st.session_state.forecast_df[st.session_state.forecast_df['group'] == selected_group].copy()
+                
+                # Create plotly figure for selected group
+                fig = make_subplots(specs=[[{"secondary_y": True}]])
+                
+                # Add actual values
+                fig.add_trace(
+                    go.Scatter(
+                        x=selected_data['date'],
+                        y=selected_data[st.session_state.target_column],
+                        mode='lines+markers',
+                        name='Actual',
+                        line=dict(color='blue')
+                    )
+                )
+                
+                # Add forecast
+                fig.add_trace(
+                    go.Scatter(
+                        x=selected_data['date'],
+                        y=selected_data['forecast'],
+                        mode='lines',
+                        name='Forecast',
+                        line=dict(color='red')
+                    )
+                )
+                
+                # Add confidence interval
+                fig.add_trace(
+                    go.Scatter(
+                        x=selected_data['date'].tolist() + selected_data['date'].tolist()[::-1],
+                        y=selected_data['forecast_upper'].tolist() + selected_data['forecast_lower'].tolist()[::-1],
+                        fill='toself',
+                        fillcolor='rgba(255,0,0,0.2)',
+                        line=dict(color='rgba(255,255,255,0)'),
+                        name='Confidence Interval'
+                    )
+                )
+                
+                # Update layout
+                fig.update_layout(
+                    title=f'Forecast for {selected_group}',
+                    xaxis_title='Date',
+                    yaxis_title=st.session_state.target_column,
+                    hovermode='x unified',
+                    legend=dict(orientation='h', y=1.1)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Add option to view overall forecast (sum of all groups)
+                if st.checkbox("View Overall Forecast (Sum of All Groups)"):
+                    # Group by date and sum the values
+                    overall_data = st.session_state.forecast_df.groupby('date').agg({
+                        st.session_state.target_column: 'sum',
+                        'forecast': 'sum',
+                        'forecast_lower': 'sum',
+                        'forecast_upper': 'sum'
+                    }).reset_index()
+                    
+                    # Create plotly figure for overall data
+                    fig_overall = make_subplots(specs=[[{"secondary_y": True}]])
+                    
+                    # Add actual values
+                    fig_overall.add_trace(
+                        go.Scatter(
+                            x=overall_data['date'],
+                            y=overall_data[st.session_state.target_column],
+                            mode='lines+markers',
+                            name='Actual',
+                            line=dict(color='blue')
+                        )
+                    )
+                    
+                    # Add forecast
+                    fig_overall.add_trace(
+                        go.Scatter(
+                            x=overall_data['date'],
+                            y=overall_data['forecast'],
+                            mode='lines',
+                            name='Forecast',
+                            line=dict(color='red')
+                        )
+                    )
+                    
+                    # Add confidence interval
+                    fig_overall.add_trace(
+                        go.Scatter(
+                            x=overall_data['date'].tolist() + overall_data['date'].tolist()[::-1],
+                            y=overall_data['forecast_upper'].tolist() + overall_data['forecast_lower'].tolist()[::-1],
+                            fill='toself',
+                            fillcolor='rgba(255,0,0,0.2)',
+                            line=dict(color='rgba(255,255,255,0)'),
+                            name='Confidence Interval'
+                        )
+                    )
+                    
+                    # Update layout
+                    fig_overall.update_layout(
+                        title='Overall Forecast (Sum of All Groups)',
+                        xaxis_title='Date',
+                        yaxis_title=st.session_state.target_column,
+                        hovermode='x unified',
+                        legend=dict(orientation='h', y=1.1)
+                    )
+                    
+                    st.plotly_chart(fig_overall, use_container_width=True)
+        
+        # Add button to clear results and start over
+        if st.session_state.has_forecast:
+            if st.button("Clear Results and Start Over"):
+                # Fix for experimental_rerun issue - use session state to clear data
+                st.session_state.forecast_df = None
+                st.session_state.all_groups = []
+                st.session_state.has_forecast = False
+                st.session_state.target_column = None
+                st.session_state.original_filename = None
+                # Use Streamlit's rerun function
+                st.rerun()
+
+    else:
+        # Display sample instructions when no file is uploaded
+        st.info("Please upload an Excel file to begin. Your file should contain:")
+        st.markdown("""
+        - A column with dates or year-month values
+        - At least one numeric column to forecast
+        - Optional grouping columns (e.g., product codes, regions)
+        
+        The app will:
+        1. Process your data
+        2. Fill missing values
+        3. Generate forecasts using Facebook Prophet
+        4. Allow you to download the complete forecast results
+        """)
+        
+        # Sample data structure
+        st.subheader("Sample Data Structure")
+        sample_data = pd.DataFrame({
+            'year_month': ['202201', '202202', '202203', '202201', '202202', '202203'],
+            'product_code': ['A001', 'A001', 'A001', 'B002', 'B002', 'B002'],
+            'region': ['North', 'North', 'North', 'South', 'South', 'South'],
+            'sales_quantity': [100, 120, 110, 80, 85, 95],
+            'sales_amount': [5000, 6000, 5500, 4000, 4250, 4750]
+        })
+        
+        st.dataframe(sample_data)
+
+    # Footer
+    st.markdown("""
+    ---
+    ### Notes:
+    - For best results, provide at least 12 months of historical data
+    - If using grouping, ensure all groups have sufficient data points
+    - The forecast horizon can be adjusted based on your needs
+    """)
+
+
+# Modify the main() function to add the Sales Forecasting option
 def main():
     st.set_page_config(layout="wide")
     
-   
     # Create the page selection in sidebar
-    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis"])
+    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis", "Sales Forecasting"])
     
     if page == "Medical Insights Copilot":  
         model_choice, client = setup_client()
@@ -699,7 +1148,9 @@ def main():
             model_choice, client
         )
     elif page == "Spreadsheet Analysis":
-            setup_spreadsheet_analysis()
+        setup_spreadsheet_analysis()
+    elif page == "Sales Forecasting":
+        setup_sales_forecasting()
 
 
 if __name__ == "__main__":
