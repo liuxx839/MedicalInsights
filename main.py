@@ -701,6 +701,8 @@ def setup_sales_forecasting():
     """,
         unsafe_allow_html=True,
     )
+
+    np.random.seed(42)
     
     # Initialize session state for storing results between interactions
     if 'forecast_df' not in st.session_state:
@@ -713,16 +715,27 @@ def setup_sales_forecasting():
         st.session_state.target_column = None
     if 'original_filename' not in st.session_state:
         st.session_state.original_filename = None
-
-    # App description
+    if 'training_accuracy' not in st.session_state:
+        st.session_state.training_accuracy = {}
+    if 'validation_accuracy' not in st.session_state:
+        st.session_state.validation_accuracy = {}
+    if 'start_date_str' not in st.session_state:
+        st.session_state.start_date_str = None
+    if 'training_end_date_str' not in st.session_state:
+        st.session_state.training_end_date_str = None
+    
+    st.set_page_config(page_title="Sales Forecasting App", layout="wide")
+    
+    # App title and description
+    st.title("Sales Forecasting Application")
     st.markdown("""
     This app helps you forecast sales or other time series data using Facebook Prophet.
     Upload your Excel file, configure the settings, and get predictions for future periods.
     """)
-
+    
     # File uploader
-    uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"], key="forecast_file_uploader")
-
+    uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
+    
     if uploaded_file is not None:
         # Store original filename
         if st.session_state.original_filename is None:
@@ -776,12 +789,13 @@ def setup_sales_forecasting():
                                       value=pd.to_datetime("2022-01-01"),
                                       min_value=min_date,
                                       max_value=max_date)
+            
         
         with col2:
             # Grouping columns (multi-select)
             all_columns = df.columns.tolist()
             grouping_columns = st.multiselect("Select Columns for Grouping (Optional)", all_columns)
-            
+    
             # Forecast horizon
             forecast_years = st.number_input("Forecast Horizon (Years)", min_value=1, max_value=10, value=3)
             
@@ -790,10 +804,16 @@ def setup_sales_forecasting():
             default_end_date = current_date.replace(day=1) + pd.DateOffset(years=forecast_years) - pd.DateOffset(days=1)
             end_date = st.date_input("Forecast End Date", 
                                     value=default_end_date,
-                                    min_value=start_date)
+                                    min_value=current_date)
             
-            # Prophet parameters
-            interval_width = st.slider("Confidence Interval Width", min_value=0.5, max_value=0.95, value=0.6, step=0.05)
+            # Hidden Confidence Interval Width (not displayed in UI)
+            interval_width = 0.6  # Set default to 0.6 as requested
+            
+            # Add a training end date input at the bottom of col2
+            training_end_date = st.date_input("Training End Date", 
+                                    value=current_date,
+                                    min_value=start_date,
+                                    max_value=current_date)
         
         # Run forecast button
         if st.button("Run Forecast") or st.session_state.has_forecast:
@@ -832,9 +852,16 @@ def setup_sales_forecasting():
                     # Get current date and calculate end date for forecasting
                     current_date = datetime.now()
                     end_date_str = end_date.strftime('%Y-%m-%d')
+                    training_end_date_str = training_end_date.strftime('%Y-%m-%d')
+                    start_date_str = start_date.strftime('%Y-%m-%d')
+                    
+                    # Store date strings in session state for later use
+                    st.session_state.start_date_str = start_date_str
+                    st.session_state.training_end_date_str = training_end_date_str
                     
                     # Create complete date and group combinations
                     st.info("Creating complete date-group combinations...")
+                    # 修改: 确保生成的日期范围始终延伸到预测结束日期
                     all_dates = pd.date_range(start=df_copy['date'].min(), end=end_date_str, freq='MS')
                     all_groups = df_copy['group'].unique()
                     st.session_state.all_groups = all_groups.tolist()
@@ -858,17 +885,15 @@ def setup_sales_forecasting():
                     # Sort data
                     df_copy = df_copy.sort_values(by=['group', 'date'], ascending=[True, True])
                     
-                    # Convert start_date to string format
-                    start_date_str = start_date.strftime("%Y-%m-%d")
+                    # Convert dates to string format
                     current_date_str = current_date.strftime("%Y-%m-%d")
                     
                     # Run Prophet forecast for each group
                     st.info("Running forecasts for each group...")
                     forecasts = {}
+                    training_accuracy = {}
+                    validation_accuracy = {}
                     total_groups = len(all_groups)
-                    
-                    # Import Prophet here for delayed loading
-                    from prophet import Prophet
                     
                     for i, group in enumerate(all_groups):
                         # Update progress based on group progress
@@ -877,25 +902,24 @@ def setup_sales_forecasting():
                         
                         # Filter data for this group - using the start_date parameter
                         group_data = df_copy[(df_copy['group'] == group) & 
-                                           (df_copy['date'] >= start_date_str) &
-                                           (df_copy['date'] <= current_date_str)].copy()
+                                           (df_copy['date'] >= start_date_str) & 
+                                           (df_copy['date'] <= training_end_date_str)].copy()
                         
                         group_data = group_data.rename(columns={'date': 'ds', target_column: 'y'})
                         
                         # Fit Prophet model
                         model = Prophet(interval_width=interval_width, uncertainty_samples=1000, mcmc_samples=300)
                         # model = Prophet(interval_width=interval_width)
-
                         try:
                             model.fit(group_data[['ds', 'y']])
                             
-                            # Calculate periods based on selected end date
-                            end_date_ts = pd.Timestamp(end_date_str)
-                            current_date_ts = pd.Timestamp(current_date_str)
-                            months_diff = (end_date_ts.year - current_date_ts.year) * 12 + end_date_ts.month - current_date_ts.month
+                            # 修改: 直接使用预测结束日期来创建future dataframe
+                            future_end_date = pd.to_datetime(end_date_str)
+                            # 创建从训练数据开始到预测结束日期的完整日期范围
+                            future_dates = pd.date_range(start=group_data['ds'].min(), end=future_end_date, freq='MS')
+                            future = pd.DataFrame({'ds': future_dates})
                             
                             # Make forecast
-                            future = model.make_future_dataframe(periods=months_diff, freq='MS')
                             forecast = model.predict(future)
                             
                             forecasts[group] = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
@@ -914,7 +938,7 @@ def setup_sales_forecasting():
                     # Write forecasts back to the dataframe using direct array assignment
                     st.info("Combining results...")
                     for group, forecast in forecasts.items():
-                        # Use date matching instead of direct array assignment
+                        # Use date matching approach instead of direct array assignment
                         for i, row in forecast.iterrows():
                             forecast_date = row['ds']
                             # Match both group and date
@@ -927,6 +951,44 @@ def setup_sales_forecasting():
                     # Format dates in the original date column according to the selected format
                     # This preserves the original date format while extending to future dates
                     df_copy[date_column] = df_copy['date'].dt.strftime(date_format)
+                    
+                    # Calculate prediction accuracy percentages for each group
+                    for group in all_groups:
+                        # Training period accuracy (Training Start Date to Training End Date)
+                        training_data = df_copy[(df_copy['group'] == group) & 
+                                              (df_copy['date'] >= start_date_str) & 
+                                              (df_copy['date'] <= training_end_date_str)]
+                        
+                        if not training_data.empty and training_data[target_column].sum() > 0:
+                            actual = training_data[target_column].values
+                            pred = training_data['forecast'].values
+                            # Calculate percentage error: (pred - actual) / actual
+                            pct_errors = np.where(actual > 0, (pred - actual) / actual, np.nan)
+                            # Calculate MAPE (Mean Absolute Percentage Error)
+                            mean_pct_error = np.nanmean(pct_errors) * 100
+                            training_accuracy[group] = mean_pct_error
+                        else:
+                            training_accuracy[group] = np.nan
+                        
+                        # Validation period accuracy (Training End Date to current date)
+                        validation_data = df_copy[(df_copy['group'] == group) & 
+                                                (df_copy['date'] > training_end_date_str) & 
+                                                (df_copy['date'] <= current_date_str)]
+                        
+                        if not validation_data.empty and validation_data[target_column].sum() > 0:
+                            actual = validation_data[target_column].values
+                            pred = validation_data['forecast'].values
+                            # Calculate percentage error: (pred - actual) / actual
+                            pct_errors = np.where(actual > 0, (pred - actual) / actual, np.nan)
+                            # Calculate MAPE
+                            mean_pct_error = np.nanmean(pct_errors) * 100
+                            validation_accuracy[group] = mean_pct_error
+                        else:
+                            validation_accuracy[group] = np.nan
+                    
+                    # Store accuracy metrics in session state
+                    st.session_state.training_accuracy = training_accuracy
+                    st.session_state.validation_accuracy = validation_accuracy
                     
                     # Store results in session state
                     st.session_state.forecast_df = df_copy
@@ -959,7 +1021,7 @@ def setup_sales_forecasting():
                 st.markdown(href, unsafe_allow_html=True)
                 
                 # Excel download with custom filename
-                buffer = BytesIO()
+                buffer = io.BytesIO()
                 st.session_state.forecast_df.to_excel(buffer, index=False)
                 buffer.seek(0)
                 b64_excel = base64.b64encode(buffer.read()).decode()
@@ -973,8 +1035,19 @@ def setup_sales_forecasting():
                 # Create dropdown for group selection
                 selected_group = st.selectbox("Select group to visualize", st.session_state.all_groups)
                 
+                # Get accuracy metrics for selected group
+                training_acc = st.session_state.training_accuracy.get(selected_group, np.nan)
+                validation_acc = st.session_state.validation_accuracy.get(selected_group, np.nan)
+                
+                # Format accuracy metrics for display
+                training_acc_text = f"Training Accuracy: {training_acc:.2f}%" if not np.isnan(training_acc) else "Training Accuracy: N/A"
+                validation_acc_text = f"Validation Accuracy: {validation_acc:.2f}%" if not np.isnan(validation_acc) else "Validation Accuracy: N/A"
+                
                 # Plot the selected group
                 selected_data = st.session_state.forecast_df[st.session_state.forecast_df['group'] == selected_group].copy()
+                
+                # 修改: 确保使用排序后的数据来创建图表，避免confidence interval的显示问题
+                selected_data = selected_data.sort_values('date')
                 
                 # Create plotly figure for selected group
                 fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -1001,21 +1074,34 @@ def setup_sales_forecasting():
                     )
                 )
                 
-                # Add confidence interval
+                # 修改: 更改confidence interval的绘制方法，确保正确绘制
+                # 添加上边界
                 fig.add_trace(
                     go.Scatter(
-                        x=selected_data['date'].tolist() + selected_data['date'].tolist()[::-1],
-                        y=selected_data['forecast_upper'].tolist() + selected_data['forecast_lower'].tolist()[::-1],
-                        fill='toself',
+                        x=selected_data['date'],
+                        y=selected_data['forecast_upper'],
+                        mode='lines',
+                        line=dict(width=0),
+                        showlegend=False
+                    )
+                )
+                
+                # 添加下边界
+                fig.add_trace(
+                    go.Scatter(
+                        x=selected_data['date'],
+                        y=selected_data['forecast_lower'],
+                        mode='lines',
+                        line=dict(width=0),
                         fillcolor='rgba(255,0,0,0.2)',
-                        line=dict(color='rgba(255,255,255,0)'),
+                        fill='tonexty',
                         name='Confidence Interval'
                     )
                 )
                 
-                # Update layout
+                # Update layout with accuracy metrics in the title
                 fig.update_layout(
-                    title=f'Forecast for {selected_group}',
+                    title=f'Forecast for {selected_group} ({training_acc_text}, {validation_acc_text})',
                     xaxis_title='Date',
                     yaxis_title=st.session_state.target_column,
                     hovermode='x unified',
@@ -1033,6 +1119,54 @@ def setup_sales_forecasting():
                         'forecast_lower': 'sum',
                         'forecast_upper': 'sum'
                     }).reset_index()
+                    
+                    # 修改: 确保使用排序后的数据来创建图表，避免confidence interval的显示问题
+                    overall_data = overall_data.sort_values('date')
+                    
+                    # Calculate overall accuracy metrics
+                    # Convert dates to datetime for comparison
+                    overall_data['date_dt'] = pd.to_datetime(overall_data['date'])
+                    
+                    # Use stored date strings from session state
+                    start_date_str = st.session_state.start_date_str
+                    training_end_date_str = st.session_state.training_end_date_str
+                    
+                    # Convert to datetime objects for comparison
+                    start_date_dt = pd.to_datetime(start_date_str)
+                    training_end_date_dt = pd.to_datetime(training_end_date_str)
+                    current_date_dt = pd.to_datetime(current_date.strftime("%Y-%m-%d"))
+                    
+                    # Training period accuracy (Training Start Date to Training End Date)
+                    training_overall = overall_data[(overall_data['date_dt'] >= start_date_dt) & 
+                                                  (overall_data['date_dt'] <= training_end_date_dt)]
+                    
+                    if not training_overall.empty and training_overall[st.session_state.target_column].sum() > 0:
+                        actual = training_overall[st.session_state.target_column].values
+                        pred = training_overall['forecast'].values
+                        # Calculate percentage error: (pred - actual) / actual
+                        pct_errors = np.where(actual > 0, (pred - actual) / actual, np.nan)
+                        # Calculate MAPE
+                        overall_training_acc = np.nanmean(pct_errors) * 100
+                    else:
+                        overall_training_acc = np.nan
+                    
+                    # Validation period accuracy (Training End Date to current date)
+                    validation_overall = overall_data[(overall_data['date_dt'] > training_end_date_dt) & 
+                                                    (overall_data['date_dt'] <= current_date_dt)]
+                    
+                    if not validation_overall.empty and validation_overall[st.session_state.target_column].sum() > 0:
+                        actual = validation_overall[st.session_state.target_column].values
+                        pred = validation_overall['forecast'].values
+                        # Calculate percentage error: (pred - actual) / actual
+                        pct_errors = np.where(actual > 0, (pred - actual) / actual, np.nan)
+                        # Calculate MAPE
+                        overall_validation_acc = np.nanmean(pct_errors) * 100
+                    else:
+                        overall_validation_acc = np.nan
+                    
+                    # Format overall accuracy metrics for display
+                    overall_training_acc_text = f"Training Accuracy: {overall_training_acc:.2f}%" if not np.isnan(overall_training_acc) else "Training Accuracy: N/A"
+                    overall_validation_acc_text = f"Validation Accuracy: {overall_validation_acc:.2f}%" if not np.isnan(overall_validation_acc) else "Validation Accuracy: N/A"
                     
                     # Create plotly figure for overall data
                     fig_overall = make_subplots(specs=[[{"secondary_y": True}]])
@@ -1059,21 +1193,34 @@ def setup_sales_forecasting():
                         )
                     )
                     
-                    # Add confidence interval
+                    # 修改: 更改confidence interval的绘制方法，确保正确绘制
+                    # 添加上边界
                     fig_overall.add_trace(
                         go.Scatter(
-                            x=overall_data['date'].tolist() + overall_data['date'].tolist()[::-1],
-                            y=overall_data['forecast_upper'].tolist() + overall_data['forecast_lower'].tolist()[::-1],
-                            fill='toself',
+                            x=overall_data['date'],
+                            y=overall_data['forecast_upper'],
+                            mode='lines',
+                            line=dict(width=0),
+                            showlegend=False
+                        )
+                    )
+                    
+                    # 添加下边界
+                    fig_overall.add_trace(
+                        go.Scatter(
+                            x=overall_data['date'],
+                            y=overall_data['forecast_lower'],
+                            mode='lines',
+                            line=dict(width=0),
                             fillcolor='rgba(255,0,0,0.2)',
-                            line=dict(color='rgba(255,255,255,0)'),
+                            fill='tonexty',
                             name='Confidence Interval'
                         )
                     )
                     
-                    # Update layout
+                    # Update layout with accuracy metrics in the title
                     fig_overall.update_layout(
-                        title='Overall Forecast (Sum of All Groups)',
+                        title=f'Overall Forecast (Sum of All Groups) ({overall_training_acc_text}, {overall_validation_acc_text})',
                         xaxis_title='Date',
                         yaxis_title=st.session_state.target_column,
                         hovermode='x unified',
@@ -1091,9 +1238,13 @@ def setup_sales_forecasting():
                 st.session_state.has_forecast = False
                 st.session_state.target_column = None
                 st.session_state.original_filename = None
-                # Use Streamlit's rerun function
+                st.session_state.training_accuracy = {}
+                st.session_state.validation_accuracy = {}
+                st.session_state.start_date_str = None
+                st.session_state.training_end_date_str = None
+                # Use Streamlit's rerun function instead of experimental_rerun
                 st.rerun()
-
+    
     else:
         # Display sample instructions when no file is uploaded
         st.info("Please upload an Excel file to begin. Your file should contain:")
@@ -1120,7 +1271,7 @@ def setup_sales_forecasting():
         })
         
         st.dataframe(sample_data)
-
+    
     # Footer
     st.markdown("""
     ---
