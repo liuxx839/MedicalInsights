@@ -274,6 +274,9 @@ def setup_spreadsheet_analysis():
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
+                    
+                # 处理列名，将空格和特殊符号替换为下划线
+                df.columns = [re.sub(r'[^\w]', '_', col) for col in df.columns]
                 
                 # 保存DataFrame到session state
                 st.session_state.df = df
