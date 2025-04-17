@@ -31,6 +31,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import base64
 from io import BytesIO
+import re
 
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
  
