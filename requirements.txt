@@ -15,10 +15,4 @@ statsmodels
 openpyxl
 prophet
 plotly
-ultralytics
-opencv-python-headless
-pillow
-faiss-cpu
-torch
-torchvision
-mtcnn
+
