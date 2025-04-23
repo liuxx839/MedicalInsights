@@ -1,4 +1,4 @@
-streamlit 
+streamlit
 zhipuai
 groq
 openai
@@ -15,3 +15,10 @@ statsmodels
 openpyxl
 prophet
 plotly
+ultralytics
+opencv-python-headless
+pillow
+faiss-cpu
+torch
+torchvision
+mtcnn
