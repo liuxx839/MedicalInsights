@@ -15,10 +15,3 @@ statsmodels
 openpyxl
 prophet
 plotly
-ultralytics
-opencv-python
-Pillow
-facenet-pytorch
-torch
-torchvision
-tensorflow
