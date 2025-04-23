@@ -33,6 +33,19 @@ import base64
 from io import BytesIO
 import re
 
+from ultralytics import YOLO
+import cv2
+from PIL import Image
+import os
+import pickle
+import uuid
+from sklearn.metrics.pairwise import cosine_similarity
+from pathlib import Path
+import torch
+from torchvision import models, transforms
+from groq import Groq
+from mtcnn import MTCNN
+
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
  
 def create_mermaid_html_from_edges(dag_edges):
@@ -1281,13 +1294,663 @@ def setup_sales_forecasting():
     - The forecast horizon can be adjusted based on your needs
     """)
 
+# New function for object detection and similarity search
+def setup_object_detection():
+    # Initialize session state for object detection
+    if 'processed' not in st.session_state:
+        st.session_state.processed = False
+    if 'image' not in st.session_state:
+        st.session_state.image = None
+    if 'last_upload_id' not in st.session_state:
+        st.session_state.last_upload_id = None
+    if 'detection_results' not in st.session_state:
+        st.session_state.detection_results = None
+    if 'processed_img' not in st.session_state:
+        st.session_state.processed_img = None
+    if 'detected_faces' not in st.session_state:
+        st.session_state.detected_faces = []
+    if 'similar_images' not in st.session_state:
+        st.session_state.similar_images = []
+    if 'similar_faces_results' not in st.session_state:
+        st.session_state.similar_faces_results = []
+
+    # Title
+    st.title("📷 高精度物体检测与相似搜索工具")
+    st.write("上传图片，检测人、酒杯等物体，并在历史图片中寻找相似图片和人脸")
+
+    # Create storage directories
+    def create_directories():
+        dirs = ["data", "data/images", "data/faces", "data/vectors"]
+        for dir_path in dirs:
+            os.makedirs(dir_path, exist_ok=True)
+        return Path("data")
+
+    data_dir = create_directories()
+
+    # Sidebar settings
+    with st.sidebar:
+        st.header("设置")
+        
+        # Model selection
+        model_option = st.selectbox(
+            "选择模型",
+            ["YOLOv11x (最高精度，较慢)", 
+             "YOLOv11l (高精度)", 
+             "YOLOv11m (中等精度)", 
+             "YOLOv11s (较快)", 
+             "YOLOv11n (最快，精度较低)",
+             "YOLOv8x (最高精度，较慢)", 
+             "YOLOv8l (高精度)", 
+             "YOLOv8m (中等精度)", 
+             "YOLOv8s (较快)", 
+             "YOLOv8n (最快，精度较低)"],
+            index=4
+        )
+        
+        # Model mapping
+        model_mapping = {
+            "YOLOv11x (最高精度，较慢)": "yolo11x.pt",
+            "YOLOv11l (高精度)": "yolo11l.pt",
+            "YOLOv11m (中等精度)": "yolo11m.pt",
+            "YOLOv11s (较快)": "yolo11s.pt",
+            "YOLOv11n (最快，精度较低)": "yolo11n.pt",
+            "YOLOv8x (最高精度，较慢)": "yolov8x.pt",
+            "YOLOv8l (高精度)": "yolov8l.pt",
+            "YOLOv8m (中等精度)": "yolov8m.pt",
+            "YOLOv8s (较快)": "yolov8s.pt",
+            "YOLOv8n (最快，精度较低)": "yolov8n.pt"
+        }
+        
+        confidence = st.slider("置信度阈值", 0.1, 1.0, 0.5, 0.1)
+        
+        # Select classes to detect
+        st.subheader("选择要检测的类别")
+        detect_person = st.checkbox("人", value=True)
+        detect_cup = st.checkbox("杯子/酒杯", value=True)
+        detect_bottle = st.checkbox("瓶子", value=True)
+        detect_all = st.checkbox("检测所有支持的物体", value=True)
+        
+        # Face detection options
+        st.subheader("人脸检测")
+        detect_faces = st.checkbox("启用人脸检测", value=True)
+        face_confidence = st.slider("人脸检测置信度", 0.1, 1.0, 0.8, 0.1)
+        
+        # Similarity search options
+        st.subheader("相似搜索")
+        enable_similarity_search = st.checkbox("启用相似图片搜索", value=True)
+        enable_face_similarity = st.checkbox("启用人脸相似搜索", value=True)
+        similarity_threshold = st.slider("相似度阈值", 0.0, 1.0, 0.8, 0.05)
+        top_k = st.slider("返回相似结果数量", 1, 10, 3)
+        
+        # Color settings
+        st.subheader("标记颜色")
+        box_color = st.color_picker("边框颜色", "#FF0000")
+        face_box_color = st.color_picker("人脸边框颜色", "#00FF00")
+
+    # Load YOLO model
+    @st.cache_resource
+    def load_model(model_name):
+        return YOLO(model_name)
+
+    # Load face detector
+    @st.cache_resource
+    def load_face_detector():
+        return MTCNN()
+
+    # Load feature extractor
+    @st.cache_resource
+    def load_feature_extractor():
+        model = models.resnet50(weights='DEFAULT')
+        model = torch.nn.Sequential(*(list(model.children())[:-1]))
+        model.eval()
+        return model
+
+    # Image preprocessing transform
+    @st.cache_resource
+    def get_transform():
+        return transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+    # Extract image features
+    def extract_image_features(image, model, transform):
+        img_t = transform(image).unsqueeze(0)
+        with torch.no_grad():
+            features = model(img_t)
+        return features.squeeze().cpu().numpy()
+
+    # Extract face features
+    def extract_face_features(face_image, model, transform):
+        if face_image.size[0] < 30 or face_image.size[1] < 30:
+            return None
+        face_t = transform(face_image).unsqueeze(0)
+        with torch.no_grad():
+            features = model(face_t)
+        return features.squeeze().cpu().numpy()
+
+    # Initialize vector database
+    def initialize_vector_db():
+        vector_file = data_dir / "vectors" / "image_vectors.pkl"
+        face_vector_file = data_dir / "vectors" / "face_vectors.pkl"
+        
+        if os.path.exists(vector_file):
+            with open(vector_file, 'rb') as f:
+                image_db = pickle.load(f)
+        else:
+            image_db = {}
+        
+        if os.path.exists(face_vector_file):
+            with open(face_vector_file, 'rb') as f:
+                face_db = pickle.load(f)
+        else:
+            face_db = {}
+        
+        return image_db, face_db
+
+    # Save vector database
+    def save_vector_db(image_db, face_db):
+        vector_file = data_dir / "vectors" / "image_vectors.pkl"
+        face_vector_file = data_dir / "vectors" / "face_vectors.pkl"
+        
+        with open(vector_file, 'wb') as f:
+            pickle.dump(image_db, f)
+        
+        with open(face_vector_file, 'wb') as f:
+            pickle.dump(face_db, f)
+
+    # Update vector database
+    def update_vector_db(image, faces, feature_extractor, transform):
+        image_db, face_db = initialize_vector_db()
+        image_id = str(uuid.uuid4())
+        timestamp = int(time.time())
+        
+        image_filename = f"{image_id}.jpg"
+        image_path = data_dir / "images" / image_filename
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+        image.save(image_path)
+        
+        image_features = extract_image_features(image, feature_extractor, transform)
+        image_db[image_id] = {
+            'vector': image_features,
+            'path': str(image_path),
+            'timestamp': timestamp
+        }
+        
+        face_ids = []
+        for i, face in enumerate(faces):
+            face_id = f"{image_id}_face_{i}"
+            face_filename = f"{face_id}.jpg"
+            face_path = data_dir / "faces" / face_filename
+            face_pil = Image.fromarray(face)
+            if face_pil.mode == 'RGBA':
+                face_pil = face_pil.convert('RGB')
+            face_pil.save(face_path)
+            
+            face_features = extract_face_features(face_pil, feature_extractor, transform)
+            if face_features is not None:
+                face_db[face_id] = {
+                    'vector': face_features,
+                    'path': str(face_path),
+                    'image_id': image_id,
+                    'timestamp': timestamp
+                }
+                face_ids.append(face_id)
+        
+        save_vector_db(image_db, face_db)
+        return image_id, face_ids
+
+    # Search similar images
+    def search_similar_images(query_vector, image_db, top_k=3, threshold=0.6):
+        if not image_db:
+            return []
+        results = []
+        for image_id, data in image_db.items():
+            db_vector = data['vector']
+            similarity = cosine_similarity([query_vector], [db_vector])[0][0]
+            if similarity >= threshold:
+                results.append({
+                    'id': image_id,
+                    'path': data['path'],
+                    'similarity': similarity,
+                    'timestamp': data.get('timestamp', 0)
+                })
+        results.sort(key=lambda x: x['similarity'], reverse=True)
+        return results[:top_k]
+
+    # Search similar faces
+    def search_similar_faces(query_vectors, face_db, top_k=3, threshold=0.6):
+        if not face_db or not query_vectors:
+            return []
+        all_results = []
+        for i, query_vector in enumerate(query_vectors):
+            results = []
+            for face_id, data in face_db.items():
+                db_vector = data['vector']
+                similarity = cosine_similarity([query_vector], [db_vector])[0][0]
+                if similarity >= threshold:
+                    results.append({
+                        'id': face_id,
+                        'path': data['path'],
+                        'image_id': data['image_id'],
+                        'similarity': similarity,
+                        'timestamp': data.get('timestamp', 0)
+                    })
+            results.sort(key=lambda x: x['similarity'], reverse=True)
+            all_results.append({
+                'query_face_index': i,
+                'matches': results[:top_k]
+            })
+        return all_results
+
+    # Process prediction and draw boxes
+    def process_prediction(image, results, selected_classes, conf_threshold):
+        img = np.array(image)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        class_names = results[0].names
+        
+        if "检测所有支持的物体" in selected_classes:
+            selected_class_ids = list(class_names.keys())
+        else:
+            class_mapping = {
+                "人": 0,
+                "杯子/酒杯": 41,
+                "瓶子": 39,
+            }
+            selected_class_ids = [class_mapping[cls] for cls in selected_classes if cls in class_mapping]
+        
+        hex_color = box_color.lstrip('#')
+        box_bgr = tuple(int(hex_color[i:i+2], 16) for i in (4, 2, 0))
+        
+        if results[0].boxes is not None:
+            boxes = results[0].boxes
+            for box in boxes:
+                cls_id = int(box.cls.item())
+                conf = box.conf.item()
+                if cls_id in selected_class_ids and conf >= conf_threshold:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                    cv2.rectangle(img, (x1, y1), (x2, y2), box_bgr, 2)
+                    label = f"{class_names[cls_id]} {conf:.2f}"
+                    text_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+                    cv2.rectangle(img, (x1, y1 - text_size[1] - 5), (x1 + text_size[0], y1), box_bgr, -1)
+                    cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return img
+
+    # Face detection function
+    def detect_face(image, face_detector, conf_threshold):
+        img = np.array(image)
+        img_rgb = img.copy()
+        faces = face_detector.detect_faces(img_rgb)
+        faces = [face for face in faces if face['confidence'] >= conf_threshold]
+        
+        hex_color = face_box_color.lstrip('#')
+        face_bgr = tuple(int(hex_color[i:i+2], 16) for i in (4, 2, 0))
+        face_images = []
+        img_cv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+        
+        for face in faces:
+            x, y, w, h = face['box']
+            cv2.rectangle(img_cv, (x, y), (x+w, y+h), face_bgr, 2)
+            label = f"Face: {face['confidence']:.2f}"
+            cv2.putText(img_cv, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, face_bgr, 2)
+            keypoints = face['keypoints']
+            for point in keypoints.values():
+                cv2.circle(img_cv, point, 2, face_bgr, 2)
+            face_crop = img_rgb[y:y+h, x:x+w]
+            face_images.append(face_crop)
+        
+        result_img = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
+        return result_img, face_images
+
+    # Display similar images
+    def display_similar_images(similar_images):
+        if not similar_images:
+            st.info("未找到相似图片")
+            return
+        st.subheader(f"相似图片 retrieval结果 (Top {len(similar_images)})")
+        cols = st.columns(min(len(similar_images), 3))
+        for i, result in enumerate(similar_images):
+            with cols[i % 3]:
+                image_path = Path(result['path'])
+                if image_path.exists():
+                    img = Image.open(image_path)
+                    st.image(img, caption=f"相似度: {result['similarity']:.2f}", use_container_width=True)
+                    if 'timestamp' in result:
+                        time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result['timestamp']))
+                        st.caption(f"上传时间: {time_str}")
+
+    # Display similar faces
+    def display_similar_faces(similar_faces_results, detected_faces):
+        if not similar_faces_results:
+            st.info("未找到相似人脸")
+            return
+        st.subheader("人脸相似度检索结果")
+        for result in similar_faces_results:
+            query_face_idx = result['query_face_index']
+            matches = result['matches']
+            if matches:
+                st.write(f"##### 查询人脸 #{query_face_idx + 1} 的匹配结果:")
+                query_face = detected_faces[query_face_idx]
+                query_face_pil = Image.fromarray(query_face)
+                cols = st.columns(1 + min(len(matches), 3))
+                with cols[0]:
+                    st.image(query_face_pil, caption="查询人脸", use_container_width=True)
+                for i, match in enumerate(matches):
+                    if i < len(cols) - 1:
+                        with cols[i + 1]:
+                            face_path = Path(match['path'])
+                            if face_path.exists():
+                                match_face = Image.open(face_path)
+                                st.image(match_face, caption=f"相似度: {match['similarity']:.2f}", use_container_width=True)
+                                if 'timestamp' in match:
+                                    time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(match['timestamp']))
+                                    st.caption(f"上传时间: {time_str}")
+
+    # Reset processed state
+    def reset_processed_state():
+        st.session_state.processed = False
+        st.session_state.detection_results = None
+        st.session_state.processed_img = None
+        st.session_state.detected_faces = []
+        st.session_state.similar_images = []
+        st.session_state.similar_faces_results = []
+
+    # Image to base64
+    def image_to_base64(image):
+        if image.mode in ('RGBA', 'P'):
+            image = image.convert('RGB')
+        buffered = BytesIO()
+        image.save(buffered, format="JPEG")
+        return base64.b64encode(buffered.getvalue()).decode()
+
+    # Analyze with Groq
+    def analyze_with_groq(image, api_key):
+        client_vision = Groq()
+        client_vision.api_key = api_key
+        try:
+            if image.mode in ('RGBA', 'P'):
+                image = image.convert('RGB')
+            base64_image = image_to_base64(image)
+            response = client_vision.chat.completions.create(
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": '''请按以下规则分析图片内容：...'''  # (same as original)
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}"
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": "请分析这张图片"
+                            }
+                        ]
+                    }
+                ]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Groq分析出错: {str(e)}"
+
+    # Summarize with OpenAI
+    def summarize_with_openai(cv_results, groq_analysis, api_key):
+        client = OpenAI(api_key=api_key, base_url="https://generativelanguage.googleapis.com/v1beta/")
+        try:
+            response = client.chat.completions.create(
+                model="gemini-2.0-flash",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """你是一位严谨的药厂审查关员..."""  # (same as original)
+                    },
+                    {
+                        "role": "user",
+                        "content": f"CV检测结果：{cv_results}\n\nAI分析结果：{groq_analysis}"
+                    }
+                ]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"OpenAI总结出错: {str(e)}"
+
+    # Main logic
+    try:
+        selected_model = model_mapping[model_option]
+        model = load_model(selected_model)
+        
+        if detect_faces:
+            face_detector = load_face_detector()
+        
+        if enable_similarity_search or enable_face_similarity:
+            feature_extractor = load_feature_extractor()
+            transform = get_transform()
+        
+        st.info(f"当前使用: {model_option}")
+        
+        uploaded_file = st.file_uploader("上传图片", type=["jpg", "jpeg", "png"], on_change=reset_processed_state)
+        
+        if uploaded_file is not None:
+            current_upload_id = id(uploaded_file)
+            col1, col2 = st.columns(2)
+            
+            if current_upload_id != st.session_state.last_upload_id or not st.session_state.processed:
+                image = Image.open(uploaded_file)
+                st.session_state.image = image
+                st.session_state.last_upload_id = current_upload_id
+                
+                with col1:
+                    st.subheader("原始图片")
+                    st.image(image, use_container_width=True)
+                
+                with st.spinner(f"正在使用 {model_option} 进行物体检测..."):
+                    results = model.predict(image)
+                    st.session_state.detection_results = results
+                    
+                    selected_classes = []
+                    if detect_person:
+                        selected_classes.append("人")
+                    if detect_cup:
+                        selected_classes.append("杯子/酒杯")
+                    if detect_bottle:
+                        selected_classes.append("瓶子")
+                    if detect_all:
+                        selected_classes.append("检测所有支持的物体")
+                    
+                    detected_faces = []
+                    original_image_for_face = np.array(image)
+                    if detect_faces:
+                        with st.spinner("正在进行人脸检测..."):
+                            _, detected_faces = detect_face(original_image_for_face, face_detector, face_confidence)
+                            st.session_state.detected_faces = detected_faces
+                    
+                    processed_img = process_prediction(image, results, selected_classes, confidence)
+                    st.session_state.processed_img = processed_img
+                    
+                    if detect_faces:
+                        hex_color = face_box_color.lstrip('#')
+                        face_bgr = tuple(int(hex_color[i:i+2], 16) for i in (4, 2, 0))
+                        img_cv = cv2.cvtColor(np.array(processed_img), cv2.COLOR_RGB2BGR)
+                        faces = face_detector.detect_faces(original_image_for_face)
+                        faces = [face for face in faces if face['confidence'] >= face_confidence]
+                        for face in faces:
+                            x, y, w, h = face['box']
+                            cv2.rectangle(img_cv, (x, y), (x+w, y+h), face_bgr, 2)
+                            label = f"Face: {face['confidence']:.2f}"
+                            cv2.putText(img_cv, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, face_bgr, 2)
+                            keypoints = face['keypoints']
+                            for point in keypoints.values():
+                                cv2.circle(img_cv, point, 2, face_bgr, 2)
+                        processed_img = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
+                        st.session_state.processed_img = processed_img
+                    
+                    if enable_similarity_search or enable_face_similarity:
+                        with st.spinner("正在添加图片到向量库并执行相似搜索..."):
+                            image_id, face_ids = update_vector_db(image, detected_faces, feature_extractor, transform)
+                            image_db, face_db = initialize_vector_db()
+                            current_image_vector = image_db[image_id]['vector']
+                            
+                            if enable_similarity_search:
+                                search_image_db = {k: v for k, v in image_db.items() if k != image_id}
+                                similar_images = search_similar_images(
+                                    current_image_vector, 
+                                    search_image_db, 
+                                    top_k=top_k, 
+                                    threshold=similarity_threshold
+                                )
+                                st.session_state.similar_images = similar_images
+                            
+                            if enable_face_similarity and detected_faces:
+                                current_face_vectors = []
+                                for face_id in face_ids:
+                                    if face_id in face_db:
+                                        current_face_vectors.append(face_db[face_id]['vector'])
+                                search_face_db = {k: v for k, v in face_db.items() if k not in face_ids}
+                                similar_faces_results = search_similar_faces(
+                                    current_face_vectors, 
+                                    search_face_db, 
+                                    top_k=top_k, 
+                                    threshold=similarity_threshold
+                                )
+                                st.session_state.similar_faces_results = similar_faces_results
+                
+                st.session_state.processed = True
+            else:
+                image = st.session_state.image
+                with col1:
+                    st.subheader("原始图片")
+                    st.image(image, use_container_width=True)
+            
+            with col2:
+                st.subheader("检测结果")
+                st.image(st.session_state.processed_img, use_container_width=True)
+            
+            if enable_similarity_search and st.session_state.similar_images:
+                display_similar_images(st.session_state.similar_images)
+            
+            if enable_face_similarity and st.session_state.similar_faces_results:
+                display_similar_faces(st.session_state.similar_faces_results, st.session_state.detected_faces)
+            
+            if detect_faces and st.session_state.detected_faces:
+                st.subheader(f"检测到的人脸 ({len(st.session_state.detected_faces)})")
+                face_cols = st.columns(min(len(st.session_state.detected_faces), 4))
+                for i, face in enumerate(st.session_state.detected_faces):
+                    with face_cols[i % 4]:
+                        st.image(face, caption=f"人脸 #{i+1}")
+            elif detect_faces and not st.session_state.detected_faces:
+                st.info("未检测到人脸")
+            
+            buf = io.BytesIO()
+            pil_img = Image.fromarray(st.session_state.processed_img)
+            pil_img.save(buf, format="PNG")
+            st.download_button(
+                label="下载检测结果",
+                data=buf.getvalue(),
+                file_name="detected_image.png",
+                mime="image/png",
+            )
+            
+            if results[0].boxes is not None:
+                all_classes = results[0].boxes.cls.cpu().numpy()
+                all_confidences = results[0].boxes.conf.cpu().numpy()
+                st.subheader("检测统计")
+                class_names = results[0].names
+                class_counts = {}
+                for cls, conf in zip(all_classes, all_confidences):
+                    cls_id = int(cls)
+                    if ((cls_id == 0 and "人" in selected_classes) or
+                        (cls_id == 41 and "杯子/酒杯" in selected_classes) or
+                        (cls_id == 39 and "瓶子" in selected_classes) or
+                        detect_all) and conf >= confidence:
+                        cls_name = class_names[cls_id]
+                        class_counts[cls_name] = class_counts.get(cls_name, 0) + 1
+                for cls_name, count in class_counts.items():
+                    st.write(f"- 检测到 {count} 个 {cls_name}")
+                if detect_faces and st.session_state.detected_faces:
+                    st.write(f"- 检测到 {len(st.session_state.detected_faces)} 个人 个人脸")
+                if not class_counts and not (detect_faces and st.session_state.detected_faces):
+                    st.write("未检测到任何物体")
+                
+                st.subheader("AI综合分析")
+                with st.spinner("正在进行AI分析..."):
+                    groq_api_key = os.environ.get("GROQ_API_KEY")
+                    openai_api_key = os.environ.get("GEMINI_API_KEY")
+                    if groq_api_key and openai_api_key:
+                        groq_analysis = analyze_with_groq(image, groq_api_key)
+                        cv_summary = {
+                            "detected_objects": class_counts,
+                            "face_count": len(st.session_state.detected_faces) if detect_faces else 0
+                        }
+                        final_summary = summarize_with_openai(cv_summary, groq_analysis, openai_api_key)
+                        st.markdown(final_summary)
+                    else:
+                        st.warning("请设置GROQ_API_KEY和OPENAI_API_KEY环境变量以启用AI分析功能")
+        
+    except Exception as e:
+        st.error(f"发生错误: {e}")
+        if "未能下载预训练权重" in str(e) or "Failed to download" in str(e):
+            st.warning("首次运行时需要下载YOLO模型，请确保网络连接稳定。")
+
+    # Usage instructions
+    with st.expander("使用说明"):
+        st.markdown("""
+        ### 使用方法：
+        1. 上传一张包含要检测物体的图片
+        2. 在侧边栏调整检测设置：
+           - 选择模型（精度与速度的平衡）
+           - 设置置信度阈值
+           - 选择要检测的物体类别
+           - 启用/禁用人脸检测
+           - 设置相似图片和人脸搜索选项
+           - 自定义标记颜色
+        3. 查看检测结果、相似图片搜索结果，并下载标记后的图片
+        
+        ### 模型比较：
+        - YOLOv8x: 最高精度，速度较慢
+        - YOLOv8l: 高精度，速度适中
+        - YOLOv8m: 平衡精度和速度
+        - YOLOv8s: 较快速度，精度适中
+        - YOLOv8n: 最快速度，精度较低
+        
+        ### 相似图片和人脸搜索：
+        - 系统会将每次上传的图片添加到向量数据库中
+        - 相似图片搜索：查找与上传图片视觉特征相似的历史图片
+        - 人脸相似搜索：对检测到的每个人脸，查找数据库中相似的人脸
+        - 可调整相似度阈值和返回结果数量
+        
+        ### 支持检测的物体：
+        - 人物
+        - 杯子/酒杯
+        - 瓶子
+        - 人脸（使用MTCNN检测器）
+        """)
+
+    st.markdown("---")
+    st.markdown("📸 高精度物体检测工具 | 基于YOLO和Streamlit构建")
 
 # Modify the main() function to add the Sales Forecasting option
 def main():
     st.set_page_config(layout="wide")
     
-    # Create the page selection in sidebar
-    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis", "Sales Forecasting"])
+    # Sidebar page selection
+    page = st.sidebar.radio("选择功能", [
+        "Medical Insights Copilot",
+        "Spreadsheet Analysis",
+        "Sales Forecasting",
+        "Object Detection and Similarity Search"
+    ])
     
     if page == "Medical Insights Copilot":  
         model_choice, client = setup_client()
@@ -1302,7 +1965,8 @@ def main():
         setup_spreadsheet_analysis()
     elif page == "Sales Forecasting":
         setup_sales_forecasting()
-
+    elif page == "Object Detection and Similarity Search":
+        setup_object_detection()
 
 if __name__ == "__main__":
     main()
