@@ -45,6 +45,7 @@ import torch
 from torchvision import models, transforms
 from groq import Groq
 from mtcnn import MTCNN
+st.set_option('server.fileWatcherType', 'none')
 
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
  
