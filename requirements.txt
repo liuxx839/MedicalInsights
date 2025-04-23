@@ -15,10 +15,9 @@ statsmodels
 openpyxl
 prophet
 plotly
-ultralytics
-opencv-python
 Pillow
 facenet-pytorch
 torch
 torchvision
-
+opencv-python==4.10.0.84
+ultralytics==8.3.13
