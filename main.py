@@ -33,7 +33,7 @@ import base64
 from io import BytesIO
 import re
 
-model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
+model_choice_research, client_research = setup_client(model_choice = 'glm-4-flash')
  
 def create_mermaid_html_from_edges(dag_edges):
     """
