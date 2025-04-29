@@ -706,8 +706,9 @@ def setup_sales_forecasting():
         unsafe_allow_html=True,
     )
 
+    # Set random seed for reproducibility
     np.random.seed(42)
-    
+        
     # Initialize session state for storing results between interactions
     if 'forecast_df' not in st.session_state:
         st.session_state.forecast_df = None
@@ -727,6 +728,8 @@ def setup_sales_forecasting():
         st.session_state.start_date_str = None
     if 'training_end_date_str' not in st.session_state:
         st.session_state.training_end_date_str = None
+    if 'covariate_columns' not in st.session_state:
+        st.session_state.covariate_columns = []
     
     st.markdown("""
     This app helps you forecast sales or other time series data using Facebook Prophet.
@@ -777,11 +780,14 @@ def setup_sales_forecasting():
             ]
             date_format = st.selectbox("Select Date Format", date_format_options)
             
+            # 确定预测频率 - 根据日期格式自动调整
+            forecast_freq = 'D' if any(x in date_format for x in ['%d', '%Y%m%d', '%Y-%m-%d', '%d-%m-%Y', '%m/%d/%Y']) else 'MS'
+            
             # Target column (to be predicted)
             numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
             target_column = st.selectbox("Select Target Column to Forecast", numeric_columns)
             st.session_state.target_column = target_column
-            
+    
             # Start date for training
             min_date = pd.to_datetime("2020-01-01")  # Default minimum date
             max_date = datetime.now()
@@ -790,6 +796,15 @@ def setup_sales_forecasting():
                                       min_value=min_date,
                                       max_value=max_date)
             
+            # Covariate selection - NEW FEATURE
+            # Filter out date column and target column from potential covariates
+            potential_covariates = [col for col in numeric_columns if col != target_column]
+            covariate_columns = st.multiselect("Select Covariate Columns (Optional)", potential_covariates, 
+                                               help="Additional numeric variables to improve forecast accuracy")
+            st.session_state.covariate_columns = covariate_columns
+            
+            # 添加模型选择
+            use_advanced_model = st.checkbox("使用高级模型 (更高精度但更慢)", value=False)   
         
         with col2:
             # Grouping columns (multi-select)
@@ -860,9 +875,10 @@ def setup_sales_forecasting():
                     st.session_state.training_end_date_str = training_end_date_str
                     
                     # Create complete date and group combinations
+                    # 创建完整日期和分组组合，使用动态频率
                     st.info("Creating complete date-group combinations...")
-                    # 修改: 确保生成的日期范围始终延伸到预测结束日期
-                    all_dates = pd.date_range(start=df_copy['date'].min(), end=end_date_str, freq='MS')
+                    # 确保生成的日期范围始终延伸到预测结束日期
+                    all_dates = pd.date_range(start=df_copy['date'].min(), end=end_date_str, freq=forecast_freq)
                     all_groups = df_copy['group'].unique()
                     st.session_state.all_groups = all_groups.tolist()
                     
@@ -874,6 +890,26 @@ def setup_sales_forecasting():
                     
                     # Fill missing values for target column with 0
                     df_copy[target_column] = df_copy[target_column].fillna(0)
+                    
+                    # Handle covariates - calculate means for each covariate within its group
+                    covariate_means = {}
+                    if covariate_columns:
+                        for col in covariate_columns:
+                            # Calculate mean for each group
+                            for group in all_groups:
+                                group_data = df_copy[(df_copy['group'] == group) & df_copy[col].notna()]
+                                if not group_data.empty:
+                                    # Use the mean of non-NA values for this group
+                                    covariate_means[(group, col)] = group_data[col].mean()
+                                else:
+                                    # If all values are NA for this group, use global mean
+                                    global_mean = df_copy[df_copy[col].notna()][col].mean()
+                                    covariate_means[(group, col)] = global_mean if not np.isnan(global_mean) else 0
+                            
+                            # Fill NAs with group-specific means
+                            for group in all_groups:
+                                mask = (df_copy['group'] == group) & df_copy[col].isna()
+                                df_copy.loc[mask, col] = covariate_means.get((group, col), 0)
                     
                     # Forward fill other columns within groups
                     if grouping_columns:
@@ -907,17 +943,54 @@ def setup_sales_forecasting():
                         
                         group_data = group_data.rename(columns={'date': 'ds', target_column: 'y'})
                         
-                        # Fit Prophet model
-                        model = Prophet(interval_width=interval_width, uncertainty_samples=1000, mcmc_samples=300)
-                        # model = Prophet(interval_width=interval_width)
+                        # Add covariates to Prophet model if selected
+                        if use_advanced_model:
+                            model = Prophet(interval_width=interval_width, uncertainty_samples=1000, mcmc_samples=300)
+                        else:
+                            model = Prophet(interval_width=interval_width)
+                            
+                        # Add covariates to model
+                        if covariate_columns:
+                            for col in covariate_columns:
+                                model.add_regressor(col)
+    
                         try:
-                            model.fit(group_data[['ds', 'y']])
+                            model.fit(group_data[['ds', 'y'] + covariate_columns])
                             
                             # 修改: 直接使用预测结束日期来创建future dataframe
                             future_end_date = pd.to_datetime(end_date_str)
-                            # 创建从训练数据开始到预测结束日期的完整日期范围
-                            future_dates = pd.date_range(start=group_data['ds'].min(), end=future_end_date, freq='MS')
+                            # 创建从训练数据开始到预测结束日期的完整日期范围，使用动态频率
+                            future_dates = pd.date_range(start=group_data['ds'].min(), end=future_end_date, freq=forecast_freq)
                             future = pd.DataFrame({'ds': future_dates})
+                            
+                            # Add covariate values to future dataframe for prediction
+                            if covariate_columns:
+                                for col in covariate_columns:
+                                    # Get all values for this group and covariate
+                                    historical_values = df_copy[(df_copy['group'] == group) & 
+                                                              (df_copy['date'].isin(future_dates))][col].values
+                                    
+                                    # Create DataFrame with future dates and corresponding covariate values
+                                    covariate_df = pd.DataFrame({
+                                        'ds': future_dates[:len(historical_values)],
+                                        col: historical_values
+                                    })
+                                    
+                                    # For dates beyond historical data, use the group mean
+                                    if len(future_dates) > len(historical_values):
+                                        remaining_dates = future_dates[len(historical_values):]
+                                        remaining_values = np.full(len(remaining_dates), 
+                                                                  covariate_means.get((group, col), 0))
+                                        
+                                        remaining_df = pd.DataFrame({
+                                            'ds': remaining_dates,
+                                            col: remaining_values
+                                        })
+                                        
+                                        covariate_df = pd.concat([covariate_df, remaining_df])
+                                    
+                                    # Merge with future DataFrame
+                                    future = pd.merge(future, covariate_df, on='ds', how='left')
                             
                             # Make forecast
                             forecast = model.predict(future)
@@ -1005,7 +1078,7 @@ def setup_sales_forecasting():
             if st.session_state.has_forecast and st.session_state.forecast_df is not None:
                 # Display results
                 st.subheader("Forecast Results")
-                st.dataframe(st.session_state.forecast_df.head(20))
+                st.dataframe(st.session_state.forecast_df)
                 
                 # Create download link for the forecast
                 st.subheader("Download Complete Forecast")
