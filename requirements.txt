@@ -16,3 +16,4 @@ openpyxl
 prophet
 plotly
 seaborn
+xlsxwriter
