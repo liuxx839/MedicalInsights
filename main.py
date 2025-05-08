@@ -1407,7 +1407,7 @@ def setup_clustering_analysis():
         4. 下载分析结果
         """)
     # 设置 Matplotlib 中文字体
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'Microsoft YaHei', 'WenQuanYi Micro Hei']
+    plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'Arial Unicode MS']
     plt.rcParams['axes.unicode_minus'] = False
     mpl.rcParams['font.family'] = 'sans-serif'
     # 上传文件
