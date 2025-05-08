@@ -7,7 +7,7 @@ from functions import (
 )
 from config import (
     topics, diseases, institutions, departments, persons,
-    primary_topics_list, primary_diseases_list,colors
+    primary_topics_list, primary_diseases_list, colors
 )
 from streamlit_extras.stylable_container import stylable_container
 import pandas as pd
@@ -22,16 +22,24 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 from dagrelation import DAGRelations
 from datadescription import DataDescription
-
-# Add at the top of the file with other imports
 import numpy as np
 from datetime import datetime
 from prophet import Prophet
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import base64
-from io import BytesIO
 import re
+
+# 新增的导入（原来没有）
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+from sklearn.manifold import TSNE
+from sklearn.neighbors import NearestNeighbors
+from scipy.stats import chi2_contingency
+
 
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
  
@@ -1354,13 +1362,648 @@ def setup_sales_forecasting():
     - The forecast horizon can be adjusted based on your needs
     """)
 
+# 在文件顶部的导入部分下添加这个辅助函数
+def convert_cluster_label(label, naming_style):
+    """将数字标签转换为选定的命名风格"""
+    label_num = int(label)
+    if naming_style == "数字":
+        return str(label_num)
+    elif naming_style == "字母":
+        # 将 0, 1, 2, ... 转换为 A, B, C, ...
+        return chr(65 + label_num) if label_num < 26 else f"A{label_num-25}"
+    elif naming_style == "中文":
+        # 将 0, 1, 2, ... 转换为 甲, 乙, 丙, ...
+        chinese_labels = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+        if label_num < len(chinese_labels):
+            return chinese_labels[label_num]
+        else:
+            # 超出基本的10个后使用"甲1, 甲2, ..."格式
+            return f"{chinese_labels[0]}{label_num-9}"
+    return str(label_num)  # 默认返回数字
+
+def setup_clustering_analysis():
+    st.markdown(
+        """
+    <h1 style='text-align: center; font-size: 18px; font-weight: bold;'>K-means/DBSCAN聚类与热力图分析工具</h1>
+    <h6 style='text-align: center; font-size: 12px;'>上传CSV或Excel文件进行K-means/DBSCAN聚类与热力图分析</h6>
+    <br><br><br>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # 应用标题
+    st.title("K-means/DBSCAN聚类与热力图分析工具")
+
+    # 边栏说明
+    with st.sidebar:
+        st.header("使用说明")
+        st.write("""
+        1. 上传 CSV 或 Excel 数据文件
+        2. 选择聚类方式:
+        - 使用 K-means 或 DBSCAN 进行聚类
+        - 或直接使用已有的聚类列
+        3. 观察热力图分析结果
+        4. 下载分析结果
+        """)
+
+    # 上传文件
+    uploaded_file = st.file_uploader("上传数据文件", type=["csv", "xlsx", "xls"])
+
+    if uploaded_file is not None:
+        # 读取数据
+        try:
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+            
+            st.success("文件上传成功!")
+            
+            # 显示数据预览
+            st.subheader("数据预览")
+            st.dataframe(df.head())
+            
+            # 聚类模式选择
+            clustering_mode = st.radio(
+                "选择聚类模式:",
+                ["使用模型聚类", "使用已有聚类列"]
+            )
+            
+            # 用于存储两种聚类结果的变量
+            cluster_col1 = None
+            cluster_col2 = None
+            
+            # 第一个聚类
+            st.subheader("第一个聚类")
+            
+            if clustering_mode == "使用模型聚类":
+                # 选择聚类算法
+                clustering_algo = st.selectbox("选择聚类算法", ["K-means", "DBSCAN"])
+                
+                # 添加簇命名风格选择
+                naming_style1 = st.selectbox(
+                    "选择簇命名风格",
+                    ["字母", "数字", "中文"],
+                    index=0,  # 默认选择字母
+                    key="naming_style1"
+                )
+                # 选择用于聚类的列
+                numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+                if len(numeric_cols) > 0:
+                    selected_cols1 = st.multiselect(
+                        "选择用于第一个聚类的列",
+                        numeric_cols,
+                        default=numeric_cols[:max(0,min(3, len(numeric_cols)))]
+                    )
+                    
+                    if selected_cols1:
+                        X1 = df[selected_cols1]
+                        # 标准化数据
+                        scaler = StandardScaler()
+                        X_scaled1 = scaler.fit_transform(X1)
+                        
+                        # 多维数据降维选项
+                        if len(selected_cols1) >= 2:
+                            input_option1 = st.radio(
+                                "选择聚类输入数据（第一个聚类）",
+                                ["原始数据", "t-SNE降维到2维"],
+                                index=0
+                            )
+                            if input_option1 == "t-SNE降维到2维":
+                                tsne = TSNE(n_components=2, random_state=42)
+                                X_scaled1 = tsne.fit_transform(X_scaled1)
+                        
+                        if clustering_algo == "K-means":
+                            # 设置 K 值
+                            k_value1 = st.slider("选择 K-means 的 K 值（簇的数量）", 2, 10, 3)
+                            
+                            # 执行 K-means
+                            kmeans1 = KMeans(n_clusters=k_value1, random_state=42, n_init=10)
+                            # 替换为:
+                            labels = kmeans1.fit_predict(X_scaled1)
+                            df['Cluster1'] = [convert_cluster_label(str(label), naming_style1) for label in labels]                        
+                            # 计算轮廓系数
+                            silhouette_avg = silhouette_score(X_scaled1, df['Cluster1'])
+                            st.write(f"轮廓系数 (越接近1越好): {silhouette_avg:.4f}")
+                        
+                        else:  # DBSCAN
+                            # 设置 DBSCAN 参数并添加通俗说明
+                            st.markdown("""
+                            **DBSCAN 参数说明**:
+                            - **eps**: 点的邻域半径，决定多远的点被认为是“邻居”。值越小，簇越密集；值越大，簇越分散。
+                            - **min_samples**: 一个簇所需的最小点数（包括核心点本身）。值越大，簇需要更多点才能形成；值越小，可能生成更多小簇。
+                            """)
+                            eps = st.slider("选择 DBSCAN 的 eps 参数", 0.1, 2.0, 0.5, step=0.01)
+                            min_samples = st.slider("选择 DBSCAN 的 min_samples 参数", 2, 20, 5)
+                            
+                            # 执行 DBSCAN
+                            dbscan1 = DBSCAN(eps=eps, min_samples=min_samples)
+                            labels = dbscan1.fit_predict(X_scaled1)
+                            
+                            # 处理噪声点 (-1)
+                            if -1 in labels:
+                                # 找到非噪声点
+                                non_noise_mask = labels != -1
+                                X_non_noise = X_scaled1[non_noise_mask]
+                                labels_non_noise = labels[non_noise_mask]
+                                
+                                # 对噪声点使用 KNN 分配最近的簇
+                                noise_mask = labels == -1
+                                X_noise = X_scaled1[noise_mask]
+                                
+                                if len(X_non_noise) > 0 and len(X_noise) > 0:
+                                    knn = NearestNeighbors(n_neighbors=1)
+                                    knn.fit(X_non_noise)
+                                    _, indices = knn.kneighbors(X_noise)
+                                    labels[noise_mask] = labels_non_noise[indices.flatten()]
+                            
+                            df['Cluster1'] = [convert_cluster_label(str(label), naming_style1) for label in labels]
+
+                            # 检查是否有有效簇
+                            if len(np.unique(df['Cluster1'])) > 1:
+                                silhouette_avg = silhouette_score(X_scaled1, df['Cluster1'])
+                                st.write(f"轮廓系数 (越接近1越好): {silhouette_avg:.4f}")
+                            else:
+                                st.warning("DBSCAN 未能生成多个有效簇，请调整 eps 或 min_samples 参数")
+                        
+                        # 显示聚类结果
+                        st.write("聚类结果分布:")
+                        cluster_counts1 = df['Cluster1'].value_counts().sort_index()
+                        st.write(cluster_counts1)
+                        
+                        # 可视化聚类结果
+                        if len(selected_cols1) == 1:
+                            # 一维：分布图 + 簇分割线
+                            fig, ax = plt.subplots(figsize=(10, 6))
+                            unique_clusters = sorted(df['Cluster1'].unique())
+                            colors = sns.color_palette("husl", len(unique_clusters))
+                            
+                            for cluster, color in zip(unique_clusters, colors):
+                                cluster_data = X1[selected_cols1[0]][df['Cluster1'] == cluster]
+                                sns.histplot(cluster_data, kde=True, label=f'簇 {cluster}', 
+                                        stat='density', alpha=0.4, color=color, ax=ax)
+                            
+                            # 添加簇分割线（基于簇中心）
+                            cluster_centers = []
+                            for cluster in unique_clusters:
+                                cluster_data = X1[selected_cols1[0]][df['Cluster1'] == cluster]
+                                if len(cluster_data) > 0:
+                                    cluster_centers.append(cluster_data.mean())
+                            cluster_centers.sort()
+                            
+                            for center in cluster_centers:
+                                ax.axvline(center, color='black', linestyle='--', alpha=0.5)
+                            
+                            plt.title('第一个聚类的分布与簇分割')
+                            plt.xlabel(selected_cols1[0])
+                            plt.ylabel('密度')
+                            plt.legend()
+                            st.pyplot(fig)
+                        
+                        elif len(selected_cols1) == 2 or len(selected_cols1) > 2:
+                            # 多维：选择可视化方式
+                            vis_option1 = st.radio(
+                                "选择可视化方式（第一个聚类）",
+                                ["基于原始维度", "t-SNE降维到2维"],
+                                index=0
+                            )
+                            
+                            if vis_option1 == "t-SNE降维到2维":
+                                # t-SNE 降维到 2 维
+                                tsne = TSNE(n_components=2, random_state=42)
+                                X_tsne = tsne.fit_transform(X_scaled1)
+                                
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                sns.scatterplot(x=X_tsne[:, 0], y=X_tsne[:, 1], 
+                                            hue=df['Cluster1'], palette='husl', ax=ax)
+                                plt.title('第一个聚类的 t-SNE 降维分布')
+                                plt.xlabel('t-SNE 维度 1')
+                                plt.ylabel('t-SNE 维度 2')
+                                st.pyplot(fig)
+                            else:
+                                # 基于原始维度（取前两个维度）
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                if len(selected_cols1) >= 2:
+                                    sns.scatterplot(x=X1[selected_cols1[0]], y=X1[selected_cols1[1]], 
+                                                hue=df['Cluster1'], palette='husl', ax=ax)
+                                    plt.title('第一个聚类的前两个维度分布')
+                                    plt.xlabel(selected_cols1[0])
+                                    plt.ylabel(selected_cols1[1])
+                                else:
+                                    sns.histplot(X1[selected_cols1[0]], hue=df['Cluster1'], palette='husl', ax=ax)
+                                    plt.title('第一个聚类的单维度分布')
+                                    plt.xlabel(selected_cols1[0])
+                                st.pyplot(fig)
+                        
+                        else:
+                            # 多维：选择可视化方式
+                            vis_option1 = st.radio(
+                                "选择可视化方式（第一个聚类）",
+                                ["基于原始维度", "t-SNE降维到2维"],
+                                index=0
+                            )
+                            
+                            if vis_option1 == "t-SNE降维到2维":
+                                # t-SNE 降维到 2 维
+                                tsne = TSNE(n_components=2, random_state=42)
+                                X_tsne = tsne.fit_transform(X_scaled1)
+                                
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                sns.scatterplot(x=X_tsne[:, 0], y=X_tsne[:, 1], 
+                                            hue=df['Cluster1'], palette='husl', ax=ax)
+                                plt.title('第一个聚类的 t-SNE 降维分布')
+                                plt.xlabel('t-SNE 维度 1')
+                                plt.ylabel('t-SNE 维度 2')
+                                st.pyplot(fig)
+                            else:
+                                # 基于原始维度（取前两个维度）
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                sns.scatterplot(x=X1[selected_cols1[0]], y=X1[selected_cols1[1]], 
+                                            hue=df['Cluster1'], palette='husl', ax=ax)
+                                plt.title('第一个聚类的前两个维度分布')
+                                plt.xlabel(selected_cols1[0])
+                                plt.ylabel(selected_cols1[1])
+                                st.pyplot(fig)
+                        
+                        cluster_col1 = 'Cluster1'
+                    else:
+                        st.warning("请至少选择一列用于聚类")
+                else:
+                    st.error("数据中没有数值型列，无法执行聚类")
+            else:
+                # 使用已有聚类列
+                all_cols = df.columns.tolist()
+                cluster_col1 = st.selectbox("选择第一个聚类列", all_cols)
+                
+                if cluster_col1:
+                    df[cluster_col1] = df[cluster_col1].astype(str)  # 确保为分类变量
+                    # 显示聚类结果
+                    st.write("聚类结果分布:")
+                    cluster_counts1 = df[cluster_col1].value_counts().sort_index()
+                    st.write(cluster_counts1)
+                    
+                    # 绘制聚类分布图
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    cluster_counts1.plot(kind='bar', ax=ax)
+                    plt.title('第一个聚类的簇分布')
+                    plt.xlabel('簇编号')
+                    plt.ylabel('样本数量')
+                    st.pyplot(fig)
+            
+            # 第二个聚类
+            st.subheader("第二个聚类")
+            
+            clustering_mode2 = st.radio(
+                "选择第二个聚类模式:",
+                ["使用模型聚类", "使用已有聚类列"],
+                key="clustering_mode2"
+            )
+            
+            if clustering_mode2 == "使用模型聚类":
+                # 选择聚类算法
+                clustering_algo2 = st.selectbox("选择聚类算法", ["K-means", "DBSCAN"], key="clustering_algo2")
+                # 添加簇命名风格选择
+                naming_style2 = st.selectbox(
+                    "选择簇命名风格",
+                    ["字母", "数字", "中文"],
+                    index=0,  # 默认选择字母
+                    key="naming_style2"
+                )
+                # 选择用于聚类的列
+                numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+                if len(numeric_cols) > 0:
+                    selected_cols2 = st.multiselect(
+                        "选择用于第二个聚类的列",
+                        numeric_cols,
+                        default=numeric_cols[-max(0,min(3, len(numeric_cols))):]
+                    )
+                    
+                    if selected_cols2:
+                        X2 = df[selected_cols2]
+                        # 标准化数据
+                        scaler = StandardScaler()
+                        X_scaled2 = scaler.fit_transform(X2)
+                        
+                        # 多维数据降维选项
+                        if len(selected_cols2) >= 2:
+                            input_option2 = st.radio(
+                                "选择聚类输入数据（第二个聚类）",
+                                ["原始数据", "t-SNE降维到2维"],
+                                index=0
+                            )
+                            if input_option2 == "t-SNE降维到2维":
+                                tsne = TSNE(n_components=2, random_state=42)
+                                X_scaled2 = tsne.fit_transform(X_scaled2)
+                        
+                        if clustering_algo2 == "K-means":
+                            # 设置 K 值
+                            k_value2 = st.slider("选择 K-means 的 K 值（簇的数量）", 2, 10, 3, key="k_value2")
+                            
+                            # 执行 K-means
+                            kmeans2 = KMeans(n_clusters=k_value2, random_state=42, n_init=10)
+                            # 替换为:
+                            labels = kmeans2.fit_predict(X_scaled2)
+                            df['Cluster2'] = [convert_cluster_label(str(label), naming_style2) for label in labels]
+
+                            # 计算轮廓系数
+                            silhouette_avg = silhouette_score(X_scaled2, df['Cluster2'])
+                            st.write(f"轮廓系数 (越接近1越好): {silhouette_avg:.4f}")
+                        
+                        else:  # DBSCAN
+                            # 设置 DBSCAN 参数并添加通俗说明
+                            st.markdown("""
+                            **DBSCAN 参数说明**:
+                            - **eps**: 点的邻域半径，决定多远的点被认为是“邻居”。值越小，簇越密集；值越大，簇越分散。
+                            - **min_samples**: 一个簇所需的最小点数（包括核心点本身）。值越大，簇需要更多点才能形成；值越小，可能生成更多小簇。
+                            """)
+                            eps2 = st.slider("选择 DBSCAN 的 eps 参数", 0.1, 2.0, 0.5, step=0.1, key="eps2")
+                            min_samples2 = st.slider("选择 DBSCAN 的 min_samples 参数", 2, 20, 5, key="min_samples2")
+                            
+                            # 执行 DBSCAN
+                            dbscan2 = DBSCAN(eps=eps2, min_samples=min_samples2)
+                            labels = dbscan2.fit_predict(X_scaled2)
+                            
+                            # 处理噪声点 (-1)
+                            if -1 in labels:
+                                # 找到非噪声点
+                                non_noise_mask = labels != -1
+                                X_non_noise = X_scaled2[non_noise_mask]
+                                labels_non_noise = labels[non_noise_mask]
+                                
+                                # 对噪声点使用 KNN 分配最近的簇
+                                noise_mask = labels == -1
+                                X_noise = X_scaled2[noise_mask]
+                                
+                                if len(X_non_noise) > 0 and len(X_noise) > 0:
+                                    knn = NearestNeighbors(n_neighbors=1)
+                                    knn.fit(X_non_noise)
+                                    _, indices = knn.kneighbors(X_noise)
+                                    labels[noise_mask] = labels_non_noise[indices.flatten()]
+                            
+                            df['Cluster2'] = [convert_cluster_label(str(label), naming_style2) for label in labels]
+                            
+                            # 检查是否有有效簇
+                            if len(np.unique(df['Cluster2'])) > 1:
+                                silhouette_avg = silhouette_score(X_scaled2, df['Cluster2'])
+                                st.write(f"轮廓系数 (越接近1越好): {silhouette_avg:.4f}")
+                            else:
+                                st.warning("DBSCAN 未能生成多个有效簇，请调整 eps 或 min_samples 参数")
+                        
+                        # 显示聚类结果
+                        st.write("聚类结果分布:")
+                        cluster_counts2 = df['Cluster2'].value_counts().sort_index()
+                        st.write(cluster_counts2)
+                        
+                        # 可视化聚类结果
+                        if len(selected_cols2) == 1:
+                            # 一维：分布图 + 簇分割线
+                            fig, ax = plt.subplots(figsize=(10, 6))
+                            unique_clusters = sorted(df['Cluster2'].unique())
+                            colors = sns.color_palette("husl", len(unique_clusters))
+                            
+                            for cluster, color in zip(unique_clusters, colors):
+                                cluster_data = X2[selected_cols2[0]][df['Cluster2'] == cluster]
+                                sns.histplot(cluster_data, kde=True, label=f'簇 {cluster}', 
+                                        stat='density', alpha=0.4, color=color, ax=ax)
+                            
+                            # 添加簇分割线（基于簇中心）
+                            cluster_centers = []
+                            for cluster in unique_clusters:
+                                cluster_data = X2[selected_cols2[0]][df['Cluster2'] == cluster]
+                                if len(cluster_data) > 0:
+                                    cluster_centers.append(cluster_data.mean())
+                            cluster_centers.sort()
+                            
+                            for center in cluster_centers:
+                                ax.axvline(center, color='black', linestyle='--', alpha=0.5)
+                            
+                            plt.title('第二个聚类的分布与簇分割')
+                            plt.xlabel(selected_cols2[0])
+                            plt.ylabel('密度')
+                            plt.legend()
+                            st.pyplot(fig)
+                        
+                        elif len(selected_cols2) == 2 or len(selected_cols2) > 2:
+                            # 多维：选择可视化方式
+                            vis_option2 = st.radio(
+                                "选择可视化方式（第二个聚类）",
+                                ["基于原始维度", "t-SNE降维到2维"],
+                                index=0
+                            )
+                            
+                            if vis_option2 == "t-SNE降维到2维":
+                                # t-SNE 降维到 2 维
+                                tsne = TSNE(n_components=2, random_state=42)
+                                X_tsne = tsne.fit_transform(X_scaled2)
+                                
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                sns.scatterplot(x=X_tsne[:, 0], y=X_tsne[:, 1], 
+                                            hue=df['Cluster2'], palette='husl', ax=ax)
+                                plt.title('第二个聚类的 t-SNE 降维分布')
+                                plt.xlabel('t-SNE 维度 1')
+                                plt.ylabel('t-SNE 维度 2')
+                                st.pyplot(fig)
+                            else:
+                                # 基于原始维度（取前两个维度）
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                if len(selected_cols2) >= 2:
+                                    sns.scatterplot(x=X2[selected_cols2[0]], y=X2[selected_cols2[1]], 
+                                                hue=df['Cluster2'], palette='husl', ax=ax)
+                                    plt.title('第二个聚类的前两个维度分布')
+                                    plt.xlabel(selected_cols2[0])
+                                    plt.ylabel(selected_cols2[1])
+                                else:
+                                    sns.histplot(X2[selected_cols2[0]], hue=df['Cluster2'], palette='husl', ax=ax)
+                                    plt.title('第二个聚类的单维度分布')
+                                    plt.xlabel(selected_cols2[0])
+                                st.pyplot(fig)
+                        
+                        else:
+                            # 多维：选择可视化方式
+                            vis_option2 = st.radio(
+                                "选择可视化方式（第二个聚类）",
+                                ["基于原始维度", "t-SNE降维到2维"],
+                                index=0
+                            )
+                            
+                            if vis_option2 == "t-SNE降维到2维":
+                                # t-SNE 降维到 2 维
+                                tsne = TSNE(n_components=2, random_state=42)
+                                X_tsne = tsne.fit_transform(X_scaled2)
+                                
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                sns.scatterplot(x=X_tsne[:, 0], y=X_tsne[:, 1], 
+                                            hue=df['Cluster2'], palette='husl', ax=ax)
+                                plt.title('第二个聚类的 t-SNE 降维分布')
+                                plt.xlabel('t-SNE 维度 1')
+                                plt.ylabel('t-SNE 维度 2')
+                                st.pyplot(fig)
+                            else:
+                                # 基于原始维度（取前两个维度）
+                                fig, ax = plt.subplots(figsize=(10, 6))
+                                sns.scatterplot(x=X2[selected_cols2[0]], y=X2[selected_cols2[1]], 
+                                            hue=df['Cluster2'], palette='husl', ax=ax)
+                                plt.title('第二个聚类的前两个维度分布')
+                                plt.xlabel(selected_cols2[0])
+                                plt.ylabel(selected_cols2[1])
+                                st.pyplot(fig)
+                        
+                        cluster_col2 = 'Cluster2'
+                    else:
+                        st.warning("请至少选择一列用于聚类")
+                else:
+                    st.error("数据中没有数值型列，无法执行聚类")
+            else:
+                # 使用已有聚类列
+                all_cols = df.columns.tolist()
+                if cluster_col1 in all_cols:
+                    all_cols.remove(cluster_col1)
+                
+                cluster_col2 = st.selectbox("选择第二个聚类列", all_cols)
+                
+                if cluster_col2:
+                    df[cluster_col2] = df[cluster_col2].astype(str)  # 确保为分类变量
+                    # 显示聚类结果
+                    st.write("聚类结果分布:")
+                    cluster_counts2 = df[cluster_col2].value_counts().sort_index()
+                    st.write(cluster_counts2)
+                    
+                    # 绘制聚类分布图
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    cluster_counts2.plot(kind='bar', ax=ax)
+                    plt.title('第二个聚类的簇分布')
+                    plt.xlabel('簇编号')
+                    plt.ylabel('样本数量')
+                    st.pyplot(fig)
+            
+            # 热力图分析
+            if cluster_col1 and cluster_col2:
+                st.subheader("热力图分析")
+                
+                # 创建交叉表
+                crosstab = pd.crosstab(df[cluster_col1], df[cluster_col2])
+                
+                # 计算期望频率
+                chi2, p, dof, expected = chi2_contingency(crosstab)
+                
+                # 计算调整后残差
+                observed = crosstab.values
+                expected = expected.reshape(observed.shape)
+                
+                # 计算残差
+                residuals = observed - expected
+                
+                # 计算调整后残差
+                n = observed.sum()
+                row_sums = observed.sum(axis=1).reshape(-1, 1)
+                col_sums = observed.sum(axis=0).reshape(1, -1)
+                
+                adj_residuals = residuals / np.sqrt(
+                    expected * (1 - row_sums / n) * (1 - col_sums / n)
+                )
+                
+                # 创建调整后残差的 DataFrame
+                adj_residuals_df = pd.DataFrame(
+                    adj_residuals,
+                    index=crosstab.index,
+                    columns=crosstab.columns
+                )
+                
+                # 显示交叉表
+                st.write("交叉表 (观察值):")
+                st.dataframe(crosstab)
+                
+                # 绘制热力图（观察值）
+                st.write("观察值热力图:")
+                fig, ax = plt.subplots(figsize=(12, 8))
+                sns.heatmap(crosstab, annot=True, fmt="d", cmap="YlGnBu", ax=ax)
+                plt.title(f'{cluster_col1} 与 {cluster_col2} 的交叉热力图')
+                st.pyplot(fig)
+                
+                # 绘制调整后残差热力图
+                st.write("调整后残差热力图:")
+                st.write("(值 > 1.96 或 < -1.96 表示在95%置信度下统计显著)")
+                fig, ax = plt.subplots(figsize=(12, 8))
+                sns.heatmap(adj_residuals_df, annot=True, fmt=".2f", cmap="coolwarm", center=0, ax=ax)
+                plt.title(f'{cluster_col1} 与 {cluster_col2} 的调整后残差热力图')
+                st.pyplot(fig)
+                
+                # 显示卡方检验结果
+                st.write(f"卡方统计量: {chi2:.4f}, p值: {p:.4f}")
+                if p < 0.05:
+                    st.write("两个聚类之间存在显著关联 (p < 0.05)")
+                else:
+                    st.write("两个聚类之间不存在显著关联 (p >= 0.05)")
+                
+                # 查找最显著的组合
+                st.subheader("最显著的聚类组合:")
+                flat_residuals = adj_residuals_df.abs().stack()  # 使用 stack() 替代 unstack()
+                top_significant = flat_residuals.sort_values(ascending=False).head(5)
+                
+                for idx, value in top_significant.items():
+                    cluster1, cluster2 = idx
+                    try:
+                        observed_val = crosstab.loc[cluster1, cluster2]
+                        expected_val = expected[crosstab.index.get_loc(cluster1), crosstab.columns.get_loc(cluster2)]
+                        direction = "高于" if observed_val > expected_val else "低于"
+                        
+                        st.write(f"聚类组合 ({cluster_col1}={cluster1}, {cluster_col2}={cluster2}):")
+                        st.write(f"  - 调整后残差: {adj_residuals_df.loc[cluster1, cluster2]:.4f}")
+                        st.write(f"  - 观察计数: {observed_val} ({direction}期望)")
+                        st.write(f"  - 期望计数: {expected_val:.2f}")
+                    except KeyError:
+                        st.warning(f"聚类组合 ({cluster_col1}={cluster1}, {cluster_col2}={cluster2})无效：索引不存在")
+                
+                # 提供下载功能
+                st.subheader("下载分析结果")
+                
+                # 准备数据
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, sheet_name='原始数据与聚类', index=False)
+                    crosstab.to_excel(writer, sheet_name='交叉表')
+                    adj_residuals_df.to_excel(writer, sheet_name='调整后残差')
+                    
+                    # 添加最显著组合的表格
+                    sig_data = []
+                    for idx, value in top_significant.items():
+                        cluster1, cluster2 = idx
+                        try:
+                            observed_val = crosstab.loc[cluster1, cluster2]
+                            expected_val = expected[crosstab.index.get_loc(cluster1), crosstab.columns.get_loc(cluster2)]
+                            sig_data.append({
+                                f'{cluster_col1}': cluster1,
+                                f'{cluster_col2}': cluster2,
+                                '调整后残差': adj_residuals_df.loc[cluster1, cluster2],
+                                '观察计数': observed_val,
+                                '期望计数': expected_val,
+                                '是否显著': abs(adj_residuals_df.loc[cluster1, cluster2]) > 1.96
+                            })
+                        except KeyError:
+                            continue
+                    
+                    pd.DataFrame(sig_data).to_excel(writer, sheet_name='显著组合')
+                
+                output.seek(0)
+                
+                # 提供下载链接
+                b64 = base64.b64encode(output.read()).decode()
+                href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="聚类分析结果.xlsx">下载Excel分析结果</a>'
+                st.markdown(href, unsafe_allow_html=True)
+                
+        except Exception as e:
+            import traceback
+            st.error(f"处理文件时出错: {str(e)}")
+            st.error(f"错误详情: {traceback.format_exc()}")
+    else:
+        st.info("请上传 CSV 或 Excel 文件以开始分析")
 
 # Modify the main() function to add the Sales Forecasting option
 def main():
     st.set_page_config(layout="wide")
     
     # Create the page selection in sidebar
-    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis", "Sales Forecasting"])
+    page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis", "Sales Forecasting","Cluster Analysis"])
     
     if page == "Medical Insights Copilot":  
         model_choice, client = setup_client()
@@ -1375,6 +2018,8 @@ def main():
         setup_spreadsheet_analysis()
     elif page == "Sales Forecasting":
         setup_sales_forecasting()
+    elif page == "Cluster Analysis":
+        setup_clustering_analysis()
 
 
 if __name__ == "__main__":
