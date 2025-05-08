@@ -1,1 +1,2 @@
-
+fonts-wqy-zenhei
+fonts-noto-cjk
