@@ -39,6 +39,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import chi2_contingency
+import matplotlib as mpl
 
 
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
@@ -1405,7 +1406,10 @@ def setup_clustering_analysis():
         3. 观察热力图分析结果
         4. 下载分析结果
         """)
-
+    # 设置 Matplotlib 中文字体
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'Microsoft YaHei', 'WenQuanYi Micro Hei']
+    plt.rcParams['axes.unicode_minus'] = False
+    mpl.rcParams['font.family'] = 'sans-serif'
     # 上传文件
     uploaded_file = st.file_uploader("上传数据文件", type=["csv", "xlsx", "xls"])
 
