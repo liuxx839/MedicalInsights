@@ -41,6 +41,11 @@ from sklearn.neighbors import NearestNeighbors
 from scipy.stats import chi2_contingency
 import matplotlib as mpl
 
+# Set Matplotlib font configuration
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'sans-serif']
+plt.rcParams['axes.unicode_minus'] = False
+
 
 model_choice_research, client_research = setup_client(model_choice = 'gemini-2.0-flash')
  
@@ -1406,11 +1411,7 @@ def setup_clustering_analysis():
         3. 观察热力图分析结果
         4. 下载分析结果
         """)
-    # 设置 Matplotlib 中文字体
-    # Set Matplotlib font configuration
-    plt.rcParams['font.family'] = 'sans-serif'
-    plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'sans-serif']
-    plt.rcParams['axes.unicode_minus'] = False
+
     # 上传文件
     uploaded_file = st.file_uploader("上传数据文件", type=["csv", "xlsx", "xls"])
 
