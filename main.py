@@ -1407,9 +1407,10 @@ def setup_clustering_analysis():
         4. 下载分析结果
         """)
     # 设置 Matplotlib 中文字体
-    plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'Arial Unicode MS']
+    # Set Matplotlib font configuration
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'sans-serif']
     plt.rcParams['axes.unicode_minus'] = False
-    mpl.rcParams['font.family'] = 'sans-serif'
     # 上传文件
     uploaded_file = st.file_uploader("上传数据文件", type=["csv", "xlsx", "xls"])
 
