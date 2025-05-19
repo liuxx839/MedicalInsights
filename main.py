@@ -2007,6 +2007,57 @@ def setup_clustering_analysis():
 # Modify the main() function to add the Sales Forecasting option
 def main():
     st.set_page_config(layout="wide")
+
+    st.markdown(
+        """
+        <h3 style='color: #800080; font-weight: bold; text-align: center;'>
+            🎵 随时随地聆听精彩音频！🎵
+        </h3>
+        <p style='color: #800080; text-align: center;'>
+            探索 app 的同时，享受独家医疗洞察音频（信息来源于网络），提升您的使用体验！
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Audio selection dropdown
+    audio_folder = "audio_folder"
+    default_audio = "sample.mp3"
+    audio_files = []
+    
+    # Check if audio_folder exists and list .mp3 files
+    if os.path.exists(audio_folder):
+        audio_files = [f for f in os.listdir(audio_folder) if f.endswith(".mp3")]
+    
+    # Add default audio to the list if it exists in the folder
+    if audio_files and default_audio in audio_files:
+        default_index = audio_files.index(default_audio)
+    else:
+        default_index = 0
+        if not audio_files:
+            audio_files = ["无音频文件可用"]
+    
+    # Audio dropdown menu
+    selected_audio = st.selectbox(
+        "选择音频",
+        audio_files,
+        index=default_index,
+        key="audio_select"
+    )
+    
+    # Play selected audio
+    if selected_audio != "无音频文件可用":
+        audio_file_path = os.path.join(audio_folder, selected_audio)
+        if os.path.exists(audio_file_path):
+            st.audio(audio_file_path, format="audio/mp3", start_time=0)
+            # st.markdown(
+            #     "<p style='color: #00FF00; text-align: center; font-weight: bold;'>正在播放中...</p>",
+            #     unsafe_allow_html=True
+            # )
+        else:
+            st.error(f"音频文件未找到: {audio_file_path}")
+    else:
+        st.error("音频文件夹为空或不存在，请检查 audio_folder/ 目录")
     
     # Create the page selection in sidebar
     page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis", "Sales Forecasting","Cluster Analysis"])
