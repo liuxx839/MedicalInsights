@@ -29,6 +29,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import base64
 import re
+import os
 
 # 新增的导入（原来没有）
 import matplotlib.pyplot as plt
