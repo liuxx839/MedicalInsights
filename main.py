@@ -2064,7 +2064,7 @@ def main():
     page = st.sidebar.radio("选择功能", ["Medical Insights Copilot", "Spreadsheet Analysis", "Sales Forecasting","Cluster Analysis"])
     
     if page == "Medical Insights Copilot":  
-        model_choice, client = setup_client()
+        model_choice, client = setup_client(model_choice = 'gemini-2.0-flash')
         setup_layout(
             topics, diseases, institutions, departments, persons,
             primary_topics_list, primary_diseases_list,
