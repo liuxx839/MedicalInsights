@@ -125,14 +125,114 @@ def create_mermaid_html_from_edges(dag_edges):
 """
     
     return mermaid_html
+
+def add_markdown_content_to_doc(doc, markdown_text):
+    """
+    一个辅助函数，用于解析包含标题、段落和表格的Markdown文本，并将其添加到Word文档中。
+    """
+    lines = markdown_text.split('\n')
+    
+    current_text = []
+    in_table = False
+    table_data = []
+
+    def flush_text(doc, text_list):
+        # 冲洗累积的普通文本
+        if text_list:
+            # 使用 strip() 移除段落前后可能的多余空白行
+            paragraph_text = ''.join(text_list).strip()
+            if paragraph_text:
+                doc.add_paragraph(paragraph_text)
+            text_list.clear()
+
+    def flush_table(doc, data):
+        # 冲洗并创建表格
+        if not data:
+            return
+        
+        # 确定行数和列数
+        num_rows = len(data)
+        num_cols = max(len(row) for row in data) if data else 0
+        
+        if num_rows > 0 and num_cols > 0:
+            # 创建表格并设置样式
+            table = doc.add_table(rows=num_rows, cols=num_cols)
+            table.style = 'Table Grid'
+            
+            # 填充表格数据
+            for i, row_cells in enumerate(data):
+                for j, cell_text in enumerate(row_cells):
+                    if j < num_cols: # 确保不越界
+                        table.cell(i, j).text = cell_text
+        data.clear()
+
+    for line in lines:
+        stripped_line = line.strip()
+
+        # 检查是否是表格行
+        is_table_line = stripped_line.startswith('|') and stripped_line.endswith('|')
+
+        if is_table_line:
+            # 如果刚进入表格模式，先处理之前累积的文本
+            if not in_table:
+                flush_text(doc, current_text)
+                in_table = True
+            
+            # 跳过Markdown表格的分隔线 (e.g., |---|---|)
+            if '---' in stripped_line:
+                continue
+            
+            # 解析表格行，去除首尾的'|'并按'|'分割
+            cells = [cell.strip() for cell in stripped_line.strip('|').split('|')]
+            table_data.append(cells)
+        else:
+            # 如果刚结束表格模式，创建表格
+            if in_table:
+                flush_table(doc, table_data)
+                in_table = False
+            
+            # 检查是否是标题行
+            if stripped_line.startswith('#'):
+                flush_text(doc, current_text) # 处理标题前累积的文本
+                
+                level = 0
+                temp_line = stripped_line
+                while temp_line.startswith('#'):
+                    level += 1
+                    temp_line = temp_line[1:]
+                
+                # Word的标题级别从0开始 (Heading 1是level 1)
+                # Markdown的#是Heading 1, ##是Heading 2
+                # 所以 level=1 对应 Heading 1, docx的level参数是1
+                # 为了安全，限制最大级别
+                level = min(level, 9)
+                
+                # 移除可能的引用标记 [1,2,3] 并保存
+                heading_text = temp_line.strip()
+                citation = ''
+                if '[' in heading_text and ']' in heading_text:
+                    main_text = heading_text[:heading_text.find('[')].strip()
+                    citation = heading_text[heading_text.find('['):].strip()
+                    heading = doc.add_heading(main_text, level=level)
+                    if citation:
+                        heading.add_run(f" {citation}").italic = True
+                else:
+                    doc.add_heading(heading_text, level=level)
+            else:
+                # 累积普通文本行
+                current_text.append(line + '\n')
+
+    # 处理循环结束后可能剩余的文本或表格
+    flush_text(doc, current_text)
+    flush_table(doc, table_data)
     
 def create_word_document(qa_response, fact_check_result=None):
     """
-    创建包含QA响应和事实核查结果的Word文档，支持Markdown标题转换为Word样式
+    创建包含QA响应和事实核查结果的Word文档，支持Markdown标题和表格转换为Word原生格式。
     """
     doc = Document()
     
-    # 设置标题
+    # 设置主标题
     title = doc.add_heading('Medical Knowledge Base Q&A Report', 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
@@ -142,77 +242,14 @@ def create_word_document(qa_response, fact_check_result=None):
     
     # 添加QA响应
     doc.add_heading('回应内容', level=1)
-    
-    # 处理QA响应中的Markdown格式
-    lines = qa_response.split('\n')
-    current_text = []
-    
-    for line in lines:
-        # 检查是否是标题行
-        if line.strip().startswith('#'):
-            # 如果之前有累积的文本，先添加为段落
-            if current_text:
-                doc.add_paragraph(''.join(current_text))
-                current_text = []
-            
-            # 计算标题级别
-            level = 1
-            line = line.strip()
-            while line.startswith('#'):
-                level += 1
-                line = line[1:]
-            level = min(level, 9)  # Word支持最多9级标题
-            
-            # 移除可能的引用标记 [1,2,3] 并保存
-            citation = ''
-            if '[' in line and ']' in line:
-                main_text = line[:line.find('[')].strip()
-                citation = line[line.find('['):].strip()
-                heading = doc.add_heading(main_text, level=level-1)
-                if citation:
-                    heading.add_run(f" {citation}").italic = True
-            else:
-                doc.add_heading(line.strip(), level=level-1)
-        else:
-            current_text.append(line + '\n')
-    
-    # 添加最后剩余的文本
-    if current_text:
-        doc.add_paragraph(''.join(current_text))
+    # 使用新的辅助函数处理内容
+    add_markdown_content_to_doc(doc, qa_response)
     
     # 如果有事实核查结果，添加到文档
     if fact_check_result:
         doc.add_heading('事实核查结果', level=1)
-        # 对事实核查结果也进行相同的处理
-        lines = fact_check_result.split('\n')
-        current_text = []
-        
-        for line in lines:
-            if line.strip().startswith('#'):
-                if current_text:
-                    doc.add_paragraph(''.join(current_text))
-                    current_text = []
-                
-                level = 1
-                line = line.strip()
-                while line.startswith('#'):
-                    level += 1
-                    line = line[1:]
-                level = min(level, 9)
-                
-                if '[' in line and ']' in line:
-                    main_text = line[:line.find('[')].strip()
-                    citation = line[line.find('['):].strip()
-                    heading = doc.add_heading(main_text, level=level-1)
-                    if citation:
-                        heading.add_run(f" {citation}").italic = True
-                else:
-                    doc.add_heading(line.strip(), level=level-1)
-            else:
-                current_text.append(line + '\n')
-        
-        if current_text:
-            doc.add_paragraph(''.join(current_text))
+        # 同样使用辅助函数处理
+        add_markdown_content_to_doc(doc, fact_check_result)
     
     # 保存到内存中
     doc_io = io.BytesIO()
