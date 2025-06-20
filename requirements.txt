@@ -17,3 +17,6 @@ prophet
 plotly
 seaborn
 xlsxwriter
+# for ppt
+python-pptx 
+playwright
