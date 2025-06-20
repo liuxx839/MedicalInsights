@@ -43,6 +43,13 @@ from scipy.stats import chi2_contingency
 import matplotlib as mpl
 from visualization import create_visualizations
 
+# for ppt
+import asyncio
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from PIL import Image
+from playwright.async_api import async_playwright
+
 # Set Matplotlib font configuration
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'sans-serif']
@@ -256,6 +263,157 @@ def create_word_document(qa_response, fact_check_result=None):
     doc.save(doc_io)
     doc_io.seek(0)
     return doc_io
+
+
+async def create_mermaid_image(html_content):
+    """
+    使用Playwright将Mermaid HTML内容转换为PNG图片字节流。
+    """
+    try:
+        async with async_playwright().start() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+            # 设置一个足够大的视口以确保图表完整渲染
+            await page.set_viewport_size({"width": 1200, "height": 800})
+            await page.set_content(html_content)
+            
+            # 等待Mermaid渲染完成
+            await page.wait_for_function('() => typeof mermaid !== "undefined" && mermaid.done()')
+            
+            # 定位到Mermaid图表元素并截图
+            locator = page.locator(".mermaid")
+            image_bytes = await locator.screenshot(type="png")
+            
+            await browser.close()
+            return image_bytes
+    except Exception as e:
+        print(f"生成Mermaid图片时出错: {e}")
+        return None
+
+def add_table_to_slide(slide, table_data):
+    """在PPT幻灯片上添加表格"""
+    if not table_data or not table_data[0]:
+        return
+        
+    rows, cols = len(table_data), len(table_data[0])
+    # 为表格留出位置和大小
+    left, top, width, height = Inches(0.5), Inches(1.5), Inches(9), Inches(5.5)
+    shape = slide.shapes.add_table(rows, cols, left, top, width, height)
+    table = shape.table
+
+    for i, row_data in enumerate(table_data):
+        for j, cell_data in enumerate(row_data):
+            table.cell(i, j).text = cell_data
+            # 调整字体大小
+            table.cell(i, j).text_frame.paragraphs[0].font.size = Pt(10)
+
+def create_powerpoint_presentation(business_report, visualizations, mermaid_html):
+    """
+    根据分析报告、可视化图表和Mermaid关系图创建PowerPoint演示文稿。
+    """
+    prs = Presentation()
+    # 设置幻灯片尺寸为16:9
+    prs.slide_width = Inches(16)
+    prs.slide_height = Inches(9)
+
+    # 定义幻灯片版式
+    title_slide_layout = prs.slide_layouts[0]
+    section_head_layout = prs.slide_layouts[2]
+    title_and_content_layout = prs.slide_layouts[5]
+    blank_layout = prs.slide_layouts[6]
+
+    # --- 1. 标题页 ---
+    slide = prs.slides.add_slide(title_slide_layout)
+    title = slide.shapes.title
+    subtitle = slide.placeholders[1]
+    title.text = "数据分析报告"
+    subtitle.text = f"生成时间: {time.strftime('%Y-%m-%d')}"
+
+    # --- 2. 解析Markdown报告并生成幻灯片 ---
+    lines = business_report.split('\n')
+    current_slide = None
+    text_content = []
+    table_data = []
+    in_table = False
+
+    def flush_text_to_slide(slide, text_list):
+        if slide and text_list:
+            content_shape = slide.shapes.placeholders[1]
+            text_frame = content_shape.text_frame
+            text_frame.clear()
+            p = text_frame.paragraphs[0]
+            p.text = "".join(text_list).strip()
+            p.font.size = Pt(14)
+            text_list.clear()
+
+    for line in lines:
+        stripped_line = line.strip()
+        
+        # 处理表格
+        if stripped_line.startswith('|') and stripped_line.endswith('|'):
+            if not in_table:
+                flush_text_to_slide(current_slide, text_content)
+                in_table = True
+            if '---' not in stripped_line:
+                table_data.append([cell.strip() for cell in stripped_line.strip('|').split('|')])
+            continue
+        elif in_table:
+            add_table_to_slide(current_slide, table_data)
+            table_data = []
+            in_table = False
+
+        # 处理标题
+        if stripped_line.startswith('# '): # 一级标题 -> 章节页
+            flush_text_to_slide(current_slide, text_content)
+            slide = prs.slides.add_slide(section_head_layout)
+            slide.shapes.title.text = stripped_line.lstrip('# ').strip()
+            current_slide = None # 章节页后不直接添加内容
+        elif stripped_line.startswith('## '): # 二级标题 -> 内容页
+            flush_text_to_slide(current_slide, text_content)
+            slide = prs.slides.add_slide(title_and_content_layout)
+            slide.shapes.title.text = stripped_line.lstrip('## ').strip()
+            current_slide = slide
+        elif current_slide and stripped_line:
+            text_content.append(line + '\n')
+            
+    flush_text_to_slide(current_slide, text_content)
+
+    # --- 3. 添加DAG关系图 ---
+    slide = prs.slides.add_slide(title_and_content_layout)
+    slide.shapes.title.text = "变量关系图 (DAG)"
+    
+    # 异步生成Mermaid图片并添加到PPT
+    try:
+        mermaid_image_bytes = asyncio.run(create_mermaid_image(mermaid_html))
+        if mermaid_image_bytes:
+            image_stream = io.BytesIO(mermaid_image_bytes)
+            # 居中放置图片
+            slide.shapes.add_picture(image_stream, Inches(2), Inches(1.5), width=Inches(12))
+    except Exception as e:
+        slide.shapes.placeholders[1].text = f"无法生成关系图: {e}"
+
+    # --- 4. 添加所有可视化图表 ---
+    if visualizations:
+        slide = prs.slides.add_slide(section_head_layout)
+        slide.shapes.title.text = "可视化图表"
+
+        for title, fig in visualizations.items():
+            slide = prs.slides.add_slide(title_and_content_layout)
+            slide.shapes.title.text = title
+            
+            # 将matplotlib fig保存到内存
+            img_stream = io.BytesIO()
+            fig.savefig(img_stream, format='png', bbox_inches='tight')
+            img_stream.seek(0)
+            
+            # 居中放置图片
+            slide.shapes.add_picture(img_stream, Inches(1), Inches(1.8), height=Inches(5.5))
+
+    # 保存到内存
+    ppt_io = io.BytesIO()
+    prs.save(ppt_io)
+    ppt_io.seek(0)
+    return ppt_io
 
 def extract_dag_edges(text_content):
     # 从文本中提取 dag_edges 部分
@@ -754,6 +912,8 @@ def setup_spreadsheet_analysis():
                     dag_edges = extract_dag_edges(st.session_state.dag_edges)
                     if dag_edges:
                         mermaid_html = create_mermaid_html_from_edges(dag_edges)
+                        # --- 新增：保存Mermaid HTML到session state ---
+                        st.session_state.mermaid_html = mermaid_html 
                         # 渲染 Mermaid 图，并增加高度以适应缩放
                         st.markdown("## 关系图 (使用右上角按钮缩放)")
                         st.components.v1.html(mermaid_html, height=600, scrolling=True)
@@ -785,14 +945,33 @@ def setup_spreadsheet_analysis():
                             st.warning("没有可用的图表。请先点击“DAG分析”按钮生成。")
             
             # 添加下载按钮
+            # --- 修改后的下载区域 ---
             if st.session_state.business_report:
                 st.markdown("---")
-                st.download_button(
-                    label="📥 下载分析报告",
-                    data=create_word_document(st.session_state.business_report),
-                    file_name=f"data_analysis_report_{time.strftime('%Y%m%d_%H%M%S')}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                # 使用列布局来并排放置按钮
+                dl_col1, dl_col2 = st.columns(2)
+                
+                with dl_col1:
+                    st.download_button(
+                        label="📥 下载Word报告",
+                        data=create_word_document(st.session_state.business_report),
+                        file_name=f"data_analysis_report_{time.strftime('%Y%m%d_%H%M%S')}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                
+                with dl_col2:
+                    # 只有在报告、图表和关系图都存在时才显示PPT下载按钮
+                    if "visualizations" in st.session_state and st.session_state.visualizations and "mermaid_html" in st.session_state and st.session_state.mermaid_html:
+                        st.download_button(
+                            label="📥 下载PPT演示文稿",
+                            data=create_powerpoint_presentation(
+                                st.session_state.business_report,
+                                st.session_state.visualizations,
+                                st.session_state.mermaid_html
+                            ),
+                            file_name=f"analysis_presentation_{time.strftime('%Y%m%d_%H%M%S')}.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        )
 
 # Add this function before the main() function
 def setup_sales_forecasting():
