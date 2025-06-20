@@ -250,14 +250,14 @@ def extract_dag_edges(text_content):
     return None
 
 def setup_spreadsheet_analysis():
-    st.markdown(
-        """
-    <h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Spreadsheet Analysis</h1>
-    <h6 style='text-align: center; font-size: 12px;'>上传Excel/CSV文件或粘贴JSON数据进行分析</h6>
-    <br><br><br>
-    """,
-        unsafe_allow_html=True,
-    )
+    # st.markdown(
+    #     """
+    # <h1 style='text-align: center; font-size: 18px; font-weight: bold;'>Spreadsheet Analysis</h1>
+    # <h6 style='text-align: center; font-size: 12px;'>上传Excel/CSV文件或粘贴JSON数据进行分析</h6>
+    # <br><br><br>
+    # """,
+    #     unsafe_allow_html=True,
+    # )
     
     # Initialize all session state variables
     if "analysis_response" not in st.session_state:
