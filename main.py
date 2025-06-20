@@ -308,27 +308,52 @@ def add_table_to_slide(slide, table_data):
             # 调整字体大小
             table.cell(i, j).text_frame.paragraphs[0].font.size = Pt(10)
 
+def flush_text_to_slide(slide, text_list):
+    """
+    Safely flushes text to a slide, only if the slide has a body content placeholder.
+    """
+    if not slide or not text_list:
+        return
+
+    # Find the body placeholder, which is safer than assuming idx=1
+    body_shape = None
+    for shape in slide.placeholders:
+        if shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
+            body_shape = shape
+            break
+            
+    if body_shape:
+        text_frame = body_shape.text_frame
+        # Clear any default text before adding new content
+        text_frame.clear() 
+        p = text_frame.paragraphs[0]
+        p.text = "".join(text_list).strip()
+        p.font.size = Pt(14)
+        
+        # If there's more text, add it in new paragraphs
+        for para_text in "".join(text_list).strip().split('\n\n')[1:]:
+             p = text_frame.add_paragraph()
+             p.text = para_text
+             p.font.size = Pt(14)
+
+    text_list.clear()
+
 def create_powerpoint_presentation(business_report, visualizations, mermaid_html):
     """
-    根据分析报告、可视化图表和Mermaid关系图创建PowerPoint演示文稿。
+    根据分析报告、可视化图表和Mermaid关系图创建PowerPoint演示文稿。(V3 - 修复空页面问题)
     """
     prs = Presentation()
-    # 设置幻灯片尺寸为16:9
     prs.slide_width = Inches(16)
     prs.slide_height = Inches(9)
 
-    # 定义幻灯片版式
     title_slide_layout = prs.slide_layouts[0]
     section_head_layout = prs.slide_layouts[2]
     title_and_content_layout = prs.slide_layouts[5]
-    blank_layout = prs.slide_layouts[6]
 
     # --- 1. 标题页 ---
     slide = prs.slides.add_slide(title_slide_layout)
-    title = slide.shapes.title
-    subtitle = slide.placeholders[1]
-    title.text = "数据分析报告"
-    subtitle.text = f"生成时间: {time.strftime('%Y-%m-%d')}"
+    slide.shapes.title.text = "数据分析报告"
+    slide.placeholders[1].text = f"生成时间: {time.strftime('%Y-%m-%d')}"
 
     # --- 2. 解析Markdown报告并生成幻灯片 ---
     lines = business_report.split('\n')
@@ -337,68 +362,51 @@ def create_powerpoint_presentation(business_report, visualizations, mermaid_html
     table_data = []
     in_table = False
 
-
-    def flush_text_to_slide(slide, text_list):
-        """
-        Safely flushes text to a slide, only if the slide has a body content placeholder.
-        """
-        if not slide or not text_list:
-            return
-    
-        # Find the body placeholder, which is safer than assuming idx=1
-        body_shape = None
-        for shape in slide.placeholders:
-            if shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
-                body_shape = shape
-                break
-                
-        if body_shape:
-            text_frame = body_shape.text_frame
-            # Clear any default text before adding new content
-            text_frame.clear() 
-            p = text_frame.paragraphs[0]
-            p.text = "".join(text_list).strip()
-            p.font.size = Pt(14)
-            
-            # If there's more text, add it in new paragraphs
-            for para_text in "".join(text_list).strip().split('\n\n')[1:]:
-                 p = text_frame.add_paragraph()
-                 p.text = para_text
-                 p.font.size = Pt(14)
-    
-        text_list.clear()
+    def flush_content(slide, text_list, table_list):
+        """统一冲洗文本和表格内容"""
+        if slide:
+            # 优先冲洗文本，因为它通常在表格之上
+            flush_text_to_slide(slide, text_list)
+            # 然后冲洗表格
+            if table_list:
+                add_table_to_slide(slide, table_list)
+                table_list.clear()
 
     for line in lines:
         stripped_line = line.strip()
-        
-        # 处理表格
+
+        # 检查是否是表格行
         if stripped_line.startswith('|') and stripped_line.endswith('|'):
             if not in_table:
+                # 表格开始前，冲洗掉累积的文本
                 flush_text_to_slide(current_slide, text_content)
                 in_table = True
             if '---' not in stripped_line:
                 table_data.append([cell.strip() for cell in stripped_line.strip('|').split('|')])
-            continue
-        elif in_table:
+            continue # 继续处理下一行表格
+        
+        # 如果上一行是表格，现在不是了，说明表格结束了
+        if in_table:
             add_table_to_slide(current_slide, table_data)
-            table_data = []
+            table_data.clear()
             in_table = False
 
         # 处理标题
         if stripped_line.startswith('# '): # 一级标题 -> 章节页
-            flush_text_to_slide(current_slide, text_content)
+            flush_content(current_slide, text_content, table_data) # 处理上一个幻灯片的所有剩余内容
             slide = prs.slides.add_slide(section_head_layout)
             slide.shapes.title.text = stripped_line.lstrip('# ').strip()
-            current_slide = None # 章节页后不直接添加内容
+            current_slide = None # 章节页是独立的，不承载后续内容
         elif stripped_line.startswith('## '): # 二级标题 -> 内容页
-            flush_text_to_slide(current_slide, text_content)
+            flush_content(current_slide, text_content, table_data) # 处理上一个幻灯片的所有剩余内容
             slide = prs.slides.add_slide(title_and_content_layout)
             slide.shapes.title.text = stripped_line.lstrip('## ').strip()
             current_slide = slide
-        elif current_slide and stripped_line:
+        elif current_slide and stripped_line: # 普通文本行
             text_content.append(line + '\n')
-            
-    flush_text_to_slide(current_slide, text_content)
+    
+    # 循环结束后，处理最后剩余的内容
+    flush_content(current_slide, text_content, table_data)
 
     # --- 3. 添加DAG关系图 ---
     slide = prs.slides.add_slide(title_and_content_layout)
@@ -406,13 +414,38 @@ def create_powerpoint_presentation(business_report, visualizations, mermaid_html
     
     # 异步生成Mermaid图片并添加到PPT
     try:
-        mermaid_image_bytes = asyncio.run(create_mermaid_image(mermaid_html))
+        # 确保在Streamlit环境中正确运行asyncio
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:  # 'RuntimeError: There is no current event loop...'
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        mermaid_image_bytes = loop.run_until_complete(create_mermaid_image(mermaid_html))
+        
         if mermaid_image_bytes:
             image_stream = io.BytesIO(mermaid_image_bytes)
-            # 居中放置图片
+            # 检查是否有内容占位符
+            body_shape = None
+            for shape in slide.placeholders:
+                if shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
+                    body_shape = shape
+                    break
+            # 如果有，清空它的文本
+            if body_shape:
+                body_shape.text_frame.clear()
+
             slide.shapes.add_picture(image_stream, Inches(2), Inches(1.5), width=Inches(12))
+        else:
+            slide.shapes.placeholders[1].text = "未能成功生成关系图。"
+
     except Exception as e:
-        slide.shapes.placeholders[1].text = f"无法生成关系图: {e}"
+        # 捕获更具体的错误信息
+        error_message = f"生成关系图时出现异常: {str(e)}"
+        print(error_message) # 在后台打印详细错误
+        if len(slide.shapes.placeholders) > 1:
+            slide.shapes.placeholders[1].text = "生成关系图时出错。"
+
 
     # --- 4. 添加所有可视化图表 ---
     if visualizations:
@@ -423,12 +456,14 @@ def create_powerpoint_presentation(business_report, visualizations, mermaid_html
             slide = prs.slides.add_slide(title_and_content_layout)
             slide.shapes.title.text = title
             
-            # 将matplotlib fig保存到内存
             img_stream = io.BytesIO()
             fig.savefig(img_stream, format='png', bbox_inches='tight')
             img_stream.seek(0)
             
-            # 居中放置图片
+            # 清空内容占位符的默认文本
+            if len(slide.shapes.placeholders) > 1:
+                slide.shapes.placeholders[1].text_frame.clear()
+
             slide.shapes.add_picture(img_stream, Inches(1), Inches(1.8), height=Inches(5.5))
 
     # 保存到内存
