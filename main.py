@@ -557,8 +557,11 @@ def setup_spreadsheet_analysis():
                             df
                         )
                         st.session_state.visualizations = visualizations
+                        st.session_state.dag_analyzer = analyzer  # 保存分析器对象
+                        st.session_state.data_desc_analyzer = data_analyzer # 保存分析器对象
                         st.success(f"生成了 {len(visualizations)} 个图表。")
-
+                        dag_progress.info("正在生成最终报告...")
+                        
                         # 生成商业报告
                         response = client_research.chat.completions.create(
                             model=model_choice_research,
