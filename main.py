@@ -653,7 +653,9 @@ def setup_spreadsheet_analysis():
                                 dag_progress.markdown(f"思考过程：\n{reasoning_content}\n\n分析结果：\n{full_response}")
                         
                         # 保存到session state
-                        st.session_state.business_report = full_response + "\n\n# 分析raw results\n" + dag_report + "\n\n# descriptive analysis\n" + json_output
+                        st.session_state.business_report = full_response
+                        st.session_state.dag_report = dag_report  # 确保这行存在，你的代码里已经有了
+                        st.session_state.data_description = json_output # 确保这行存在，你的代码里已经有了
                         st.session_state.dag_reasoning = reasoning_content
                         
                         # 清空进度容器
@@ -695,10 +697,26 @@ def setup_spreadsheet_analysis():
             with col2:
                 if st.session_state.business_report:
                     st.markdown("### DAG分析结果")
-                    if hasattr(st.session_state, 'dag_reasoning'):
-                        with st.expander("分析过程", expanded=False):
+
+                    # 显示LLM的分析过程
+                    if hasattr(st.session_state, 'dag_reasoning') and st.session_state.dag_reasoning:
+                        with st.expander("LLM分析过程", expanded=False):
                             st.markdown(st.session_state.dag_reasoning)
+                    
+                    # 1. 使用 st.markdown() 显示格式化的商业报告
                     st.markdown(st.session_state.business_report)
+
+                    # 2. 使用 st.expander + st.text() 显示原始的DAG技术报告
+                    if hasattr(st.session_state, 'dag_report') and st.session_state.dag_report:
+                        with st.expander("查看DAG分析原始报告 (Technical Appendix)", expanded=False):
+                            # st.text() 能很好地保留原始文本的对齐和换行
+                            st.text(st.session_state.dag_report)
+
+                    # 3. 使用 st.expander + st.json() 显示描述性统计的JSON数据
+                    if hasattr(st.session_state, 'data_description') and st.session_state.data_description:
+                        with st.expander("查看描述性统计JSON数据", expanded=False):
+                            # st.json() 会美化显示JSON
+                            st.json(st.session_state.data_description)
             
             # 添加下载按钮
             if st.session_state.business_report:
