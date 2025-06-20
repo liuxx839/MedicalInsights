@@ -653,7 +653,20 @@ def setup_spreadsheet_analysis():
                                 dag_progress.markdown(f"思考过程：\n{reasoning_content}\n\n分析结果：\n{full_response}")
                         
                         # 保存到session state
-                        st.session_state.business_report = full_response
+                         # --- 新增的清理步骤 ---
+                        cleaned_report = full_response.strip()
+                        # 检查并移除包裹的代码块标记
+                        if cleaned_report.startswith("```markdown"):
+                            cleaned_report = cleaned_report[len("```markdown"):].strip()
+                        if cleaned_report.startswith("```"):
+                            cleaned_report = cleaned_report[3:].strip()
+                        if cleaned_report.endswith("```"):
+                            cleaned_report = cleaned_report[:-3].strip()
+
+                        # 保存清理后的报告到session state
+                        st.session_state.business_report = cleaned_report  # <-- 使用清理后的变量
+                
+                        # st.session_state.business_report = full_response
                         st.session_state.dag_report = dag_report  # 确保这行存在，你的代码里已经有了
                         st.session_state.data_description = json_output # 确保这行存在，你的代码里已经有了
                         st.session_state.dag_reasoning = reasoning_content
