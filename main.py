@@ -49,6 +49,7 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from PIL import Image
 from playwright.async_api import async_playwright
+from pptx.enum.shapes import PP_PLACEHOLDER
 
 # Set Matplotlib font configuration
 plt.rcParams['font.family'] = 'sans-serif'
@@ -336,15 +337,36 @@ def create_powerpoint_presentation(business_report, visualizations, mermaid_html
     table_data = []
     in_table = False
 
+
     def flush_text_to_slide(slide, text_list):
-        if slide and text_list:
-            content_shape = slide.shapes.placeholders[1]
-            text_frame = content_shape.text_frame
-            text_frame.clear()
+        """
+        Safely flushes text to a slide, only if the slide has a body content placeholder.
+        """
+        if not slide or not text_list:
+            return
+    
+        # Find the body placeholder, which is safer than assuming idx=1
+        body_shape = None
+        for shape in slide.placeholders:
+            if shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
+                body_shape = shape
+                break
+                
+        if body_shape:
+            text_frame = body_shape.text_frame
+            # Clear any default text before adding new content
+            text_frame.clear() 
             p = text_frame.paragraphs[0]
             p.text = "".join(text_list).strip()
             p.font.size = Pt(14)
-            text_list.clear()
+            
+            # If there's more text, add it in new paragraphs
+            for para_text in "".join(text_list).strip().split('\n\n')[1:]:
+                 p = text_frame.add_paragraph()
+                 p.text = para_text
+                 p.font.size = Pt(14)
+    
+        text_list.clear()
 
     for line in lines:
         stripped_line = line.strip()
