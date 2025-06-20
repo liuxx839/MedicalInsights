@@ -277,6 +277,14 @@ def setup_spreadsheet_analysis():
         st.session_state.dag_reasoning = ""
     if "df" not in st.session_state:
         st.session_state.df = None
+
+     # --- 新增和修正的初始化 ---
+    if "dag_analyzer" not in st.session_state:
+        st.session_state.dag_analyzer = None
+    if "data_desc_analyzer" not in st.session_state:
+        st.session_state.data_desc_analyzer = None
+    if "visualizations" not in st.session_state:
+        st.session_state.visualizations = {} # 使用空字典初始化
     
     # Create tabs for different input methods
     tab1, tab2 = st.tabs(["文件上传", "JSON粘贴"])
@@ -541,11 +549,12 @@ def setup_spreadsheet_analysis():
                         st.session_state.data_description = json_output
 
                         # --- 新增：调用可视化函数 ---
-                        st.info("正在生成可视化图表...")
+                        # 3. 调用可视化函数，传入刚刚创建的本地变量
+                        dag_progress.info("正在生成可视化图表...")
                         visualizations = create_visualizations(
-                            st.session_state.dag_analyzer,
-                            st.session_state.data_desc_analyzer,
-                            st.session_state.df
+                            analyzer,          # <-- 使用本地变量 analyzer
+                            data_analyzer,     # <-- 使用本地变量 data_analyzer
+                            df
                         )
                         st.session_state.visualizations = visualizations
                         st.success(f"生成了 {len(visualizations)} 个图表。")
