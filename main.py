@@ -41,6 +41,7 @@ from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import chi2_contingency
 import matplotlib as mpl
+from visualization import create_visualizations
 
 # Set Matplotlib font configuration
 plt.rcParams['font.family'] = 'sans-serif'
@@ -539,6 +540,16 @@ def setup_spreadsheet_analysis():
                         json_output = data_analyzer.to_json()
                         st.session_state.data_description = json_output
 
+                        # --- 新增：调用可视化函数 ---
+                        st.info("正在生成可视化图表...")
+                        visualizations = create_visualizations(
+                            st.session_state.dag_analyzer,
+                            st.session_state.data_desc_analyzer,
+                            st.session_state.df
+                        )
+                        st.session_state.visualizations = visualizations
+                        st.success(f"生成了 {len(visualizations)} 个图表。")
+
                         # 生成商业报告
                         response = client_research.chat.completions.create(
                             model=model_choice_research,
@@ -705,10 +716,24 @@ def setup_spreadsheet_analysis():
             with col2:
                 if st.session_state.business_report:
                     st.markdown("### DAG分析结果")
-                    if hasattr(st.session_state, 'dag_reasoning'):
-                        with st.expander("分析过程", expanded=False):
-                            st.markdown(st.session_state.dag_reasoning)
-                    st.markdown(st.session_state.business_report)
+                    # --- 新增：使用Tabs来分别显示报告和图表 ---
+                    report_tab, viz_tab = st.tabs(["📊 分析报告", "📈 可视化图表"])
+    
+                    with report_tab:
+                        if hasattr(st.session_state, 'dag_reasoning'):
+                            with st.expander("分析过程", expanded=False):
+                                st.markdown(st.session_state.dag_reasoning)
+                        st.markdown(st.session_state.business_report)
+                    
+                    with viz_tab:
+                        if "visualizations" in st.session_state and st.session_state.visualizations:
+                            st.info("以下是根据您的数据和DAG关系生成的图表。")
+                            for title, fig in st.session_state.visualizations.items():
+                                st.markdown(f"#### {title}")
+                                st.pyplot(fig) # 使用st.pyplot来渲染matplotlib图表
+                                st.markdown("---")
+                        else:
+                            st.warning("没有可用的图表。请先点击“DAG分析”按钮生成。")
             
             # 添加下载按钮
             if st.session_state.business_report:
