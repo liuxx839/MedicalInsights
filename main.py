@@ -269,17 +269,23 @@ def create_word_document(qa_response, fact_check_result=None):
 async def create_mermaid_image(html_content):
     """
     使用Playwright将Mermaid HTML内容转换为PNG图片字节流。
+    修复：添加浏览器检查和回退机制
     """
     try:
-        async with async_playwright().start() as p:
+        async with async_playwright() as p:
+            # 尝试启动浏览器，如果失败则抛出异常
             browser = await p.chromium.launch()
             page = await browser.new_page()
             # 设置一个足够大的视口以确保图表完整渲染
             await page.set_viewport_size({"width": 1200, "height": 800})
             await page.set_content(html_content)
             
-            # 等待Mermaid渲染完成
-            await page.wait_for_function('() => typeof mermaid !== "undefined" && mermaid.done()')
+            # 等待Mermaid渲染完成，增加超时时间
+            try:
+                await page.wait_for_function('() => typeof mermaid !== "undefined"', timeout=10000)
+                await page.wait_for_timeout(2000)  # 额外等待确保完全渲染
+            except:
+                pass  # 如果等待超时，继续尝试截图
             
             # 定位到Mermaid图表元素并截图
             locator = page.locator(".mermaid")
@@ -288,9 +294,69 @@ async def create_mermaid_image(html_content):
             await browser.close()
             return image_bytes
     except Exception as e:
+        # 修复：提供更详细的错误信息和解决方案
+        error_msg = str(e)
+        if "Executable doesn't exist" in error_msg:
+            print("Playwright浏览器未安装。请运行以下命令安装：")
+            print("pip install playwright")
+            print("playwright install chromium")
         print(f"生成Mermaid图片时出错: {e}")
         return None
+    
 
+def optimize_report_for_ppt(business_report):
+    """
+    使用LLM优化报告内容，使其更适合PPT展示
+    """
+    try:
+        response = client_research.chat.completions.create(
+            model=model_choice_research,
+            messages=[
+                {
+                    "role": "system",
+                    "content": """你是一个专业的PPT内容优化专家。请将提供的详细分析报告转换为适合PPT展示的格式。
+
+                    优化原则：
+                    1. 每个章节都要有实质性内容，避免空白页面
+                    2. 内容要简洁明了，适合幻灯片展示
+                    3. 保持原有的层级结构（#和##）
+                    4. 将长段落拆分为要点
+                    5. 表格保持但要简化
+                    6. 添加必要的总结和亮点
+                    7. 确保每个二级标题下都有足够的内容
+
+                    输出格式要求：
+                    - 保持markdown格式
+                    - 使用#作为章节标题（对应PPT的章节页）
+                    - 使用##作为幻灯片标题（对应PPT的内容页）
+                    - 每个##下必须有实质内容
+                    - 内容要点化，使用短句和列表
+                    - 重要数据用**加粗**突出
+
+                    请确保生成的内容结构清晰，每个部分都有价值，避免空洞的标题。"""
+                },
+                {
+                    "role": "user",
+                    "content": f"请优化以下报告内容，使其更适合PPT展示：\n\n{business_report}"
+                }
+            ],
+            temperature=0.3,
+            max_tokens=3000,
+            stream=True  # 修复：确保使用流式响应
+        )
+        
+        optimized_content = ""
+        # 修复：正确处理流式响应
+        for chunk in response:
+            if chunk.choices[0].delta.content:
+                optimized_content += chunk.choices[0].delta.content
+                print(optimized_content.strip())
+        return optimized_content.strip()
+    except Exception as e:
+        print(f"优化报告内容时出错: {e}")
+        return business_report  # 如果优化失败，返回原始报告
+
+    
 def add_table_to_slide(slide, table_data):
     """在PPT幻灯片上添加表格"""
     if not table_data or not table_data[0]:
@@ -304,44 +370,147 @@ def add_table_to_slide(slide, table_data):
 
     for i, row_data in enumerate(table_data):
         for j, cell_data in enumerate(row_data):
-            table.cell(i, j).text = cell_data
-            # 调整字体大小
-            table.cell(i, j).text_frame.paragraphs[0].font.size = Pt(10)
+            if j < cols: # 确保不越界
+                cell = table.cell(i, j)
+                cell.text = str(cell_data) if cell_data else ""
+                # 调整字体大小
+                for paragraph in cell.text_frame.paragraphs:
+                    paragraph.font.size = Pt(10)
 
 def flush_text_to_slide(slide, text_list):
     """
-    Safely flushes text to a slide, only if the slide has a body content placeholder.
+    Safely flushes text to a slide, using different methods to add content.
+    修复版本：使用多种方法添加内容，包括直接添加文本框
     """
     if not slide or not text_list:
         return
 
-    # Find the body placeholder, which is safer than assuming idx=1
+    # 合并文本内容
+    content = "".join(text_list).strip()
+    if not content:
+        return
+
+    # 方法1: 尝试找到内容占位符
     body_shape = None
-    for shape in slide.placeholders:
-        if shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
-            body_shape = shape
-            break
+    
+    # 查找所有可用的占位符
+    for i, shape in enumerate(slide.placeholders):
+        if hasattr(shape, 'placeholder_format'):
+            placeholder_type = shape.placeholder_format.type
+            print(f"Debug: Placeholder {i}: type={placeholder_type}")
             
-    if body_shape:
+            # 尝试除了TITLE之外的任何占位符
+            if placeholder_type != PP_PLACEHOLDER.TITLE:
+                body_shape = shape
+                print(f"Debug: Using placeholder {i} with type {placeholder_type}")
+                break
+    
+    # 方法2: 如果没找到合适的占位符，直接使用索引1（如果存在）
+    if not body_shape and len(slide.placeholders) > 1:
+        try:
+            body_shape = slide.placeholders[1]
+            print("Debug: Using slide.placeholders[1] as fallback")
+        except:
+            print("Debug: Failed to access placeholders[1]")
+    
+    # 方法3: 如果占位符方法都失败，直接添加文本框
+    if not body_shape or not hasattr(body_shape, 'text_frame'):
+        print("Debug: No suitable placeholder found, adding text box directly")
+        try:
+            # 直接在幻灯片上添加文本框
+            left = Inches(0.5)
+            top = Inches(1.5)
+            width = Inches(15)
+            height = Inches(6.5)
+            
+            text_box = slide.shapes.add_textbox(left, top, width, height)
+            text_frame = text_box.text_frame
+            text_frame.clear()
+            
+            # 处理文本内容
+            lines = [line.strip() for line in content.split('\n') if line.strip()]
+            
+            if lines:
+                # 第一行
+                p = text_frame.paragraphs[0]
+                p.text = lines[0]
+                try:
+                    p.font.size = Pt(14)
+                except:
+                    pass
+                
+                # 其他行
+                for line_text in lines[1:]:
+                    try:
+                        p = text_frame.add_paragraph()
+                        p.text = line_text
+                        p.font.size = Pt(14)
+                    except:
+                        pass
+                        
+            print("Debug: Successfully added content via text box")
+            text_list.clear()
+            return
+            
+        except Exception as e:
+            print(f"Debug: Error adding text box: {e}")
+            text_list.clear()
+            return
+    
+    # 方法4: 使用找到的占位符
+    try:
         text_frame = body_shape.text_frame
-        # Clear any default text before adding new content
-        text_frame.clear() 
-        p = text_frame.paragraphs[0]
-        p.text = "".join(text_list).strip()
-        p.font.size = Pt(14)
+        text_frame.clear()
         
-        # If there's more text, add it in new paragraphs
-        for para_text in "".join(text_list).strip().split('\n\n')[1:]:
-             p = text_frame.add_paragraph()
-             p.text = para_text
-             p.font.size = Pt(14)
+        # 处理文本内容
+        lines = [line.strip() for line in content.split('\n') if line.strip()]
+        
+        if lines:
+            # 第一行
+            p = text_frame.paragraphs[0]
+            p.text = lines[0]
+            try:
+                p.font.size = Pt(14)
+            except:
+                pass
+            
+            # 其他行
+            for line_text in lines[1:]:
+                try:
+                    p = text_frame.add_paragraph()
+                    p.text = line_text
+                    p.font.size = Pt(14)
+                except:
+                    pass
+                    
+        print("Debug: Successfully added content via placeholder")
+    except Exception as e:
+        print(f"Debug: Error in placeholder text_frame operations: {e}")
 
     text_list.clear()
 
 def create_powerpoint_presentation(business_report, visualizations, mermaid_html):
     """
-    根据分析报告、可视化图表和Mermaid关系图创建PowerPoint演示文稿。(V3 - 修复空页面问题)
+    根据分析报告、可视化图表和Mermaid关系图创建PowerPoint演示文稿。
+    调试版本：添加大量调试信息来定位问题
     """
+    print("Debug: Starting PPT creation")
+    
+    # 首先优化报告内容
+    with st.spinner("正在优化PPT内容..."):
+        try:
+            optimized_report = optimize_report_for_ppt(business_report)
+            print(f"Debug: Optimized report length={len(optimized_report)}")
+            print(f"Debug: First 200 chars of optimized report: {optimized_report[:200]}")
+        except Exception as e:
+            print(f"PPT内容优化失败，使用原始报告: {e}")
+            optimized_report = business_report
+            print(f"Debug: Using original report, length={len(optimized_report)}")
+    
+    if not optimized_report.strip():
+        print("Debug: WARNING - Empty optimized report!")
+        optimized_report = business_report
+    
     prs = Presentation()
     prs.slide_width = Inches(16)
     prs.slide_height = Inches(9)
@@ -354,101 +523,148 @@ def create_powerpoint_presentation(business_report, visualizations, mermaid_html
     slide = prs.slides.add_slide(title_slide_layout)
     slide.shapes.title.text = "数据分析报告"
     slide.placeholders[1].text = f"生成时间: {time.strftime('%Y-%m-%d')}"
+    print("Debug: Title slide created")
 
-    # --- 2. 解析Markdown报告并生成幻灯片 ---
-    lines = business_report.split('\n')
+    # --- 2. 解析优化后的Markdown报告并生成幻灯片 ---
+    lines = optimized_report.split('\n')
+    print(f"Debug: Total lines to process: {len(lines)}")
+    
     current_slide = None
     text_content = []
     table_data = []
     in_table = False
+    slide_count = 0
 
     def flush_content(slide, text_list, table_list):
         """统一冲洗文本和表格内容"""
         if slide:
-            # 优先冲洗文本，因为它通常在表格之上
+            print(f"Debug: Flushing content for slide, text_list length={len(text_list)}")
             flush_text_to_slide(slide, text_list)
-            # 然后冲洗表格
             if table_list:
                 add_table_to_slide(slide, table_list)
                 table_list.clear()
 
-    for line in lines:
+    for i, line in enumerate(lines):
         stripped_line = line.strip()
+        
+        # 每100行输出一次进度
+        if i % 100 == 0:
+            print(f"Debug: Processing line {i}/{len(lines)}")
 
         # 检查是否是表格行
         if stripped_line.startswith('|') and stripped_line.endswith('|'):
             if not in_table:
-                # 表格开始前，冲洗掉累积的文本
                 flush_text_to_slide(current_slide, text_content)
                 in_table = True
             if '---' not in stripped_line:
                 table_data.append([cell.strip() for cell in stripped_line.strip('|').split('|')])
-            continue # 继续处理下一行表格
+            continue
         
-        # 如果上一行是表格，现在不是了，说明表格结束了
+        # 表格结束
         if in_table:
             add_table_to_slide(current_slide, table_data)
             table_data.clear()
             in_table = False
 
         # 处理标题
-        if stripped_line.startswith('# '): # 一级标题 -> 章节页
-            flush_content(current_slide, text_content, table_data) # 处理上一个幻灯片的所有剩余内容
+        if stripped_line.startswith('# '):
+            print(f"Debug: Found section header: {stripped_line}")
+            flush_content(current_slide, text_content, table_data)
             slide = prs.slides.add_slide(section_head_layout)
             slide.shapes.title.text = stripped_line.lstrip('# ').strip()
-            current_slide = None # 章节页是独立的，不承载后续内容
-        elif stripped_line.startswith('## '): # 二级标题 -> 内容页
-            flush_content(current_slide, text_content, table_data) # 处理上一个幻灯片的所有剩余内容
+            current_slide = None
+            slide_count += 1
+            
+        elif stripped_line.startswith('## '):
+            print(f"Debug: Found slide title: {stripped_line}")
+            flush_content(current_slide, text_content, table_data)
             slide = prs.slides.add_slide(title_and_content_layout)
             slide.shapes.title.text = stripped_line.lstrip('## ').strip()
             current_slide = slide
-        elif current_slide and stripped_line: # 普通文本行
+            slide_count += 1
+            
+        elif current_slide and line.strip():  # 有内容的行
             text_content.append(line + '\n')
+            if len(text_content) % 10 == 0:  # 每10行输出一次
+                print(f"Debug: Accumulated {len(text_content)} lines for current slide")
+                
+        elif current_slide and not line.strip():  # 空行
+            text_content.append('\n')
     
-    # 循环结束后，处理最后剩余的内容
+    # 处理最后剩余的内容
+    print("Debug: Flushing final content")
     flush_content(current_slide, text_content, table_data)
+    
+    print(f"Debug: Created {slide_count} content slides")
+
+    # 如果没有创建任何内容幻灯片，创建一个测试幻灯片
+    if slide_count == 0:
+        print("Debug: No content slides created, adding test slide")
+        slide = prs.slides.add_slide(title_and_content_layout)
+        slide.shapes.title.text = "测试内容"
+        if len(slide.placeholders) > 1:
+            slide.placeholders[1].text = f"原始报告长度: {len(business_report)}\n优化报告长度: {len(optimized_report)}\n总行数: {len(lines)}"
 
     # --- 3. 添加DAG关系图 ---
-    slide = prs.slides.add_slide(title_and_content_layout)
-    slide.shapes.title.text = "变量关系图 (DAG)"
-    
-    # 异步生成Mermaid图片并添加到PPT
-    try:
-        # 确保在Streamlit环境中正确运行asyncio
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:  # 'RuntimeError: There is no current event loop...'
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        mermaid_image_bytes = loop.run_until_complete(create_mermaid_image(mermaid_html))
+    if mermaid_html:
+        print("Debug: Adding Mermaid diagram")
+        slide = prs.slides.add_slide(title_and_content_layout)
+        slide.shapes.title.text = "变量关系图 (DAG)"
         
-        if mermaid_image_bytes:
-            image_stream = io.BytesIO(mermaid_image_bytes)
-            # 检查是否有内容占位符
-            body_shape = None
-            for shape in slide.placeholders:
-                if shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
-                    body_shape = shape
-                    break
-            # 如果有，清空它的文本
-            if body_shape:
-                body_shape.text_frame.clear()
+        try:
+            import asyncio
+            
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import nest_asyncio
+                    nest_asyncio.apply()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            with st.spinner("正在生成关系图..."):
+                try:
+                    if loop.is_running():
+                        mermaid_image_bytes = loop.run_until_complete(create_mermaid_image(mermaid_html))
+                    else:
+                        mermaid_image_bytes = loop.run_until_complete(create_mermaid_image(mermaid_html))
+                except Exception as async_error:
+                    print(f"异步执行Mermaid图片生成失败: {async_error}")
+                    mermaid_image_bytes = None
+            
+            if mermaid_image_bytes:
+                image_stream = io.BytesIO(mermaid_image_bytes)
+                body_shape = None
+                for shape in slide.placeholders:
+                    if hasattr(shape, 'placeholder_format') and shape.placeholder_format.type == PP_PLACEHOLDER.BODY:
+                        body_shape = shape
+                        break
+                if body_shape:
+                    body_shape.text_frame.clear()
 
-            slide.shapes.add_picture(image_stream, Inches(2), Inches(1.5), width=Inches(12))
-        else:
-            slide.shapes.placeholders[1].text = "未能成功生成关系图。"
+                slide.shapes.add_picture(image_stream, Inches(1), Inches(1.5), width=Inches(14), height=Inches(6))
+                st.success("关系图已成功添加到PPT")
+            else:
+                if len(slide.placeholders) > 1:
+                    slide.placeholders[1].text = "关系图生成失败。可能原因：\n1. Playwright浏览器未安装\n2. 网络连接问题\n\n解决方案：\n运行 'playwright install chromium'"
+                st.warning("关系图生成失败 - 请参考PPT中的说明")
 
-    except Exception as e:
-        # 捕获更具体的错误信息
-        error_message = f"生成关系图时出现异常: {str(e)}"
-        print(error_message) # 在后台打印详细错误
-        if len(slide.shapes.placeholders) > 1:
-            slide.shapes.placeholders[1].text = "生成关系图时出错。"
-
+        except ImportError as import_error:
+            print(f"导入nest_asyncio失败: {import_error}")
+            if len(slide.placeholders) > 1:
+                slide.placeholders[1].text = "关系图生成失败：缺少必要的依赖包。\n请安装：pip install nest-asyncio"
+            st.error("缺少nest-asyncio包，请安装后重试")
+        except Exception as e:
+            error_message = f"生成关系图时出现异常: {str(e)}"
+            print(error_message)
+            if len(slide.placeholders) > 1:
+                slide.placeholders[1].text = f"生成关系图时出错: {str(e)}"
+            st.error(f"关系图生成错误: {str(e)}")
 
     # --- 4. 添加所有可视化图表 ---
     if visualizations:
+        print("Debug: Adding visualizations")
         slide = prs.slides.add_slide(section_head_layout)
         slide.shapes.title.text = "可视化图表"
 
@@ -456,20 +672,27 @@ def create_powerpoint_presentation(business_report, visualizations, mermaid_html
             slide = prs.slides.add_slide(title_and_content_layout)
             slide.shapes.title.text = title
             
-            img_stream = io.BytesIO()
-            fig.savefig(img_stream, format='png', bbox_inches='tight')
-            img_stream.seek(0)
-            
-            # 清空内容占位符的默认文本
-            if len(slide.shapes.placeholders) > 1:
-                slide.shapes.placeholders[1].text_frame.clear()
+            try:
+                img_stream = io.BytesIO()
+                fig.savefig(img_stream, format='png', bbox_inches='tight', dpi=150)
+                img_stream.seek(0)
+                
+                if len(slide.shapes.placeholders) > 1:
+                    slide.shapes.placeholders[1].text_frame.clear()
 
-            slide.shapes.add_picture(img_stream, Inches(1), Inches(1.8), height=Inches(5.5))
+                slide.shapes.add_picture(img_stream, Inches(1), Inches(1.8), height=Inches(5.5))
+            except Exception as e:
+                print(f"添加图表 {title} 时出错: {e}")
+                if len(slide.shapes.placeholders) > 1:
+                    slide.shapes.placeholders[1].text = f"图表 '{title}' 生成失败"
 
+    print("Debug: Saving PPT to memory")
     # 保存到内存
     ppt_io = io.BytesIO()
     prs.save(ppt_io)
     ppt_io.seek(0)
+    
+    print(f"Debug: PPT creation completed, total slides: {len(prs.slides)}")
     return ppt_io
 
 def extract_dag_edges(text_content):
