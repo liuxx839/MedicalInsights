@@ -51,6 +51,21 @@ from PIL import Image
 from playwright.async_api import async_playwright
 from pptx.enum.shapes import PP_PLACEHOLDER
 
+# for Playwright 的浏览器（
+import subprocess
+import sys
+# 在应用启动时安装 Playwright 的浏览器（仅在需要时运行）
+def install_playwright():
+    try:
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"安装 Chromium 失败: {e}")
+    else:
+        print("Chromium 安装成功")
+
+# 在应用启动时调用
+install_playwright()
+
 # Set Matplotlib font configuration
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'WenQuanYi Zen Hei', 'sans-serif']
