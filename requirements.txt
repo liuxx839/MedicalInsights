@@ -11,7 +11,7 @@ sentence-transformers
 numpy
 scikit-learn
 python-docx
-statsmodels
+# statsmodels
 openpyxl
 prophet
 plotly
@@ -20,3 +20,5 @@ xlsxwriter
 # for ppt
 python-pptx 
 playwright
+scipy==1.12.0
+statsmodels==0.14.1
